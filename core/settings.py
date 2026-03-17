@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     'theme',
     'usuarios',
     'inventario',
+    'solicitudes',
+    'despacho',
 ]
 
 TAILWIND_APP_NAME = 'theme'
