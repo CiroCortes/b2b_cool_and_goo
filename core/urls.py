@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import RedirectView
+from . import views  # Importamos la nueva vista
 
 urlpatterns = [
     # Panel de administración de Django
@@ -12,6 +12,6 @@ urlpatterns = [
     # Solicitudes B2B (backlog de pedidos + picking FEFO)
     path('solicitudes/', include('solicitudes.urls', namespace='solicitudes')),
 
-    # Raíz del sitio redirige al login
-    path('', RedirectView.as_view(url='/usuarios/login/', permanent=False), name='home'),
+    # Dashboard Principal B2B (Cliente / Admin)
+    path('', views.dashboard_principal, name='home'),
 ]

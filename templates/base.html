@@ -25,15 +25,25 @@
 
             <nav>
                 <ul class="flex space-x-6 text-sm font-medium">
-                    <!-- Nav items will be defined by Auth roles, for now we leave placeholders -->
-                    <li><a href="#" class="hover:text-accent transition-colors">Dashboard</a></li>
-                    <li><a href="#" class="hover:text-accent transition-colors">Recepción</a></li>
-                    <li><a href="#" class="hover:text-accent transition-colors">Picking</a></li>
+                    <!-- Nav items condicionados por auth -->
+                    {% if user.is_authenticated %}
+                    <li><a href="{% url 'solicitudes:lista' %}" class="hover:text-accent transition-colors">📋 Backlog</a></li>
+                    <li><a href="{% url 'solicitudes:pedido_ia' %}" class="hover:text-accent transition-colors">🤖 Pedir con IA</a></li>
+                    <li><a href="{% url 'solicitudes:nueva' %}" class="hover:text-accent transition-colors">+ Nueva OC</a></li>
                     <li>
-                        <a href="#" class="bg-secondary px-4 py-2 rounded shadow hover:bg-opacity-90 transition">
+                        <a href="{% url 'usuarios:logout' %}"
+                           class="bg-secondary px-4 py-2 rounded shadow hover:bg-opacity-90 transition">
                             Cerrar Sesión
                         </a>
                     </li>
+                    {% else %}
+                    <li>
+                        <a href="{% url 'usuarios:login' %}"
+                           class="bg-primary px-4 py-2 rounded shadow hover:bg-opacity-90 transition">
+                            Iniciar Sesión
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
             </nav>
         </div>

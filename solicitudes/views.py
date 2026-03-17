@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from .models import Solicitud, ItemSolicitud
 from .forms import SolicitudForm, ItemSolicitudForm
+from .ia_service import procesar_pedido_con_gemini
 from despacho.services import asignar_lotes_a_solicitud
 
 
@@ -119,4 +120,73 @@ def detalle_solicitud(request, pk):
         'solicitud': solicitud,
         'items': items,
         'titulo': f'Solicitud #{solicitud.pk}',
+    })
+
+
+@login_required
+def pedido_ia(request):
+    """
+    Vista de pedido por texto libre con Gemini IA.
+    El cliente describe lo que necesita en lenguaje natural.
+    Gemini extrae los ítems y se crea la Solicitud automáticamente.
+    """
+    resultado = None
+
+    if request.method == 'POST':
+        texto = request.POST.get('texto_pedido', '').strip()
+        fecha_requerida = request.POST.get('fecha_requerida', '')
+        referencia = request.POST.get('referencia_cliente', '')
+
+        if not texto:
+            messages.error(request, 'Por favor escribe tu pedido antes de enviar.')
+        else:
+            # Llamar al servicio de IA
+            resultado = procesar_pedido_con_gemini(texto)
+
+            if resultado['exito'] and resultado['items']:
+                # Si el usuario confirmó la vista previa, crear la Solicitud
+                if request.POST.get('confirmar') == '1':
+                    from datetime import date
+                    try:
+                        fecha = date.fromisoformat(fecha_requerida) if fecha_requerida else date.today()
+                    except ValueError:
+                        fecha = date.today()
+
+                    solicitud = Solicitud.objects.create(
+                        cliente=request.user,
+                        fecha_requerida=fecha,
+                        referencia_cliente=referencia,
+                        observaciones=f'[IA] Texto original: {texto[:300]}',
+                    )
+
+                    items_creados = 0
+                    for item in resultado['items']:
+                        if item['encontrado'] and item['cantidad'] > 0:
+                            ItemSolicitud.objects.create(
+                                solicitud=solicitud,
+                                producto=item['producto'],
+                                cantidad_solicitada=item['cantidad'],
+                            )
+                            items_creados += 1
+
+                    if items_creados > 0:
+                        messages.success(
+                            request,
+                            f'✅ Solicitud #{solicitud.pk} creada por IA con {items_creados} ítem(s).'
+                        )
+                        return redirect('solicitudes:detalle', pk=solicitud.pk)
+                    else:
+                        solicitud.delete()
+                        messages.warning(
+                            request,
+                            'Gemini no encontró ningún SKU reconocido en tu pedido. '
+                            'Intenta ser más específico o usa el formulario manual.'
+                        )
+                        resultado = None
+            elif not resultado['exito']:
+                messages.error(request, f'Error al procesar con IA: {resultado["error"]}')
+
+    return render(request, 'solicitudes/pedido_ia.html', {
+        'titulo': '🤖 Pedido por Inteligencia Artificial',
+        'resultado': resultado,
     })

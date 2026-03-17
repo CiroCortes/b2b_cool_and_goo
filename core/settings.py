@@ -70,6 +70,11 @@ LOGIN_URL = '/usuarios/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/usuarios/login/'
 
+# -----------------------------------------------------------------------
+# Gemini IA - API Key
+# -----------------------------------------------------------------------
+GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
