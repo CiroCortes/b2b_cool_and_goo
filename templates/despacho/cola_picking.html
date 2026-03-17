@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Cola de Picking B2B{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-secondary">Cola de Picking (Operaciones)</h1>
+            <p class="text-gray-500 mt-2">Solicitudes autorizadas. El orden de prioridad es por "Fecha Requerida".</p>
+        </div>
+        <div class="text-right">
+            <span class="bg-blue-100 text-blue-800 text-sm font-semibold mr-2 px-3 py-1 rounded-full">
+                {{ solicitudes.count }} Órdenes en Cola
+            </span>
+        </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+                <tr>
+                    <th scope="col" class="px-6 py-3 font-semibold uppercase tracking-wider text-left">Prioridad (Req)</th>
+                    <th scope="col" class="px-6 py-3 font-semibold uppercase tracking-wider text-left">OC / Cliente</th>
+                    <th scope="col" class="px-6 py-3 font-semibold uppercase tracking-wider text-center">Ítems</th>
+                    <th scope="col" class="px-6 py-3 font-semibold uppercase tracking-wider text-right">Lotes FEFO</th>
+                    <th scope="col" class="px-6 py-3 font-semibold uppercase tracking-wider text-right">Acción</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for sol in solicitudes %}
+                <tr class="hover:bg-blue-50 transition border-l-4 {% if forloop.first %}border-red-500{% else %}border-transparent{% endif %}">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="font-bold {% if forloop.first %}text-red-600{% else %}text-secondary{% endif %}">
+                            {{ sol.fecha_requerida|date:"d M, Y" }}
+                        </span>
+                        {% if forloop.first %}
+                            <p class="text-xs text-red-500 mt-1 font-bold animate-pulse">PRÓXIMO PICK</p>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-secondary">#{{ sol.pk }} - {{ sol.cliente.username }}</div>
+                        <div class="text-xs text-gray-500">Ref: {{ sol.referencia_cliente|default:"N/A" }}</div>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded font-bold text-xs">{{ sol.items.count }} Líneas</span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        {% if sol.estado == 'EN_PICKING' %}
+                            <span class="text-yellow-600 font-bold text-xs bg-yellow-50 px-2 py-1 rounded">En Proceso ⌛</span>
+                        {% else %}
+                            <span class="text-green-600 font-bold text-xs bg-green-50 px-2 py-1 rounded">Esperando Operador ✓</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        {% if sol.estado == 'EN_PICKING' %}
+                            <a href="{% url 'despacho:ejecutar' sol.pk %}" class="bg-yellow-500 text-white px-4 py-2 rounded shadow hover:bg-yellow-600 transition font-bold text-sm">
+                                Continuar &rarr;
+                            </a>
+                        {% else %}
+                            <a href="{% url 'despacho:ejecutar' sol.pk %}" class="bg-primary text-white px-4 py-2 rounded shadow hover:bg-opacity-90 transition font-bold text-sm">
+                                Empezar &rarr;
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                        <div class="text-4xl mb-3">🧉</div>
+                        <p class="font-bold text-secondary">La cola de picking está vacía.</p>
+                        <p class="text-sm">Todo el Backlog está despachado o pendiente de autorización.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}

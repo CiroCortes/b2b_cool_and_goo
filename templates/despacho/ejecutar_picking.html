@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}Hoja de Picking - OC #{{ solicitud.pk }}{% endblock %}
+
+{% block content %}
+<!-- Botones de Acción (Se ocultan al imprimir) -->
+<div class="max-w-5xl mx-auto mb-6 flex justify-between items-center print:hidden">
+    <a href="{% url 'despacho:cola' %}" class="text-gray-500 hover:text-primary">&larr; Volver a la Cola</a>
+    <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-2 rounded shadow flex items-center gap-2 hover:bg-black transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        Imprimir Hoja de Picking
+    </button>
+</div>
+
+<!-- Hoja de Picking (Diseñada para A4 / Impresión) -->
+<div class="max-w-5xl mx-auto bg-white p-10 border rounded shadow-lg print:border-none print:shadow-none print:p-0">
+    
+    <!-- Encabezado de la Hoja -->
+    <div class="border-b-4 border-gray-800 pb-6 mb-6 flex justify-between items-start">
+        <div>
+            <h1 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">Hoja de Ruta (Picking)</h1>
+            <p class="text-xl text-gray-600 mt-2 font-bold">Solicitud B2B #{{ solicitud.pk }}</p>
+        </div>
+        <div class="text-right">
+            <p class="text-sm font-bold text-gray-500 uppercase tracking-widest">Fecha Impresión</p>
+            <p class="text-lg font-mono font-bold text-gray-800">{% now "d/m/Y H:i" %}</p>
+        </div>
+    </div>
+
+    <!-- Datos Cliente / Operador -->
+    <div class="grid grid-cols-2 gap-8 mb-8 bg-gray-50 p-6 rounded border">
+        <div>
+            <p class="text-xs uppercase font-bold text-gray-500 mb-1">Entregar a:</p>
+            <p class="font-bold text-xl text-gray-900">{{ solicitud.cliente.first_name }} {{ solicitud.cliente.last_name }} ({{ solicitud.cliente.username }})</p>
+            <p class="text-sm text-gray-600 mt-1">Ref Cliente: {{ solicitud.referencia_cliente|default:"Ninguna" }}</p>
+            <p class="text-sm text-red-600 font-bold mt-1">Requerido para: {{ solicitud.fecha_requerida|date:"d M, Y" }}</p>
+        </div>
+        <div>
+            <p class="text-xs uppercase font-bold text-gray-500 mb-1">Pickeador (Operador):</p>
+            <div class="border-b-2 border-dashed border-gray-400 mt-6 w-full"></div>
+            <p class="text-xs text-center text-gray-400 mt-1">(Firma del Operador Autorizado)</p>
+        </div>
+    </div>
+
+    <!-- Tabla de Checklist Operativo -->
+    <table class="min-w-full border-collapse border border-gray-300 print:text-black">
+        <thead>
+            <tr class="bg-gray-100 print:bg-gray-200">
+                <th class="border border-gray-300 px-4 py-3 text-left w-12 text-sm">Check</th>
+                <th class="border border-gray-300 px-4 py-3 text-left uppercase font-bold text-xs tracking-wide">Ubicación (Ruta)</th>
+                <th class="border border-gray-300 px-4 py-3 text-left uppercase font-bold text-xs tracking-wide">Producto / SKU</th>
+                <th class="border border-gray-300 px-4 py-3 text-left uppercase font-bold text-xs tracking-wide">Lote Extraer (FEFO)</th>
+                <th class="border border-gray-300 px-4 py-3 text-right uppercase font-bold text-xs tracking-wide">Cant</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td class="border border-gray-300 px-4 py-4 text-center">
+                    <div class="w-6 h-6 border-2 border-gray-400 rounded-sm mx-auto"></div>
+                </td>
+                <td class="border border-gray-300 px-4 py-4">
+                    {% if item.lote_asignado and item.lote_asignado.ubicacion %}
+                        <div class="font-bold text-lg text-gray-900">{{ item.lote_asignado.ubicacion.codigo }}</div>
+                        <div class="text-xs text-gray-500">{{ item.lote_asignado.ubicacion.zona.bodega.nombre }} / {{ item.lote_asignado.ubicacion.zona.nombre }}</div>
+                    {% else %}
+                        <span class="text-red-500 font-bold">Sin Ubicación Fija</span>
+                    {% endif %}
+                </td>
+                <td class="border border-gray-300 px-4 py-4">
+                    <p class="font-bold text-gray-900">{{ item.producto.codigo }}</p>
+                    <p class="text-sm text-gray-600 truncate max-w-xs">{{ item.producto.nombre }}</p>
+                </td>
+                <td class="border border-gray-300 px-4 py-4">
+                    {% if item.lote_asignado %}
+                        <span class="font-mono font-bold bg-yellow-100 text-yellow-900 px-2 py-1 rounded text-sm print:bg-transparent print:border print:border-black">{{ item.lote_asignado.numero_lote }}</span>
+                        <p class="text-xs text-red-600 font-bold mt-1">Vence: {{ item.lote_asignado.fecha_vencimiento|date:"d/m/Y" }}</p>
+                    {% else %}
+                        <span class="text-red-500 font-bold text-sm">NO HAY STOCK IMPOSIBLE PICK</span>
+                    {% endif %}
+                </td>
+                <td class="border border-gray-300 px-4 py-4 text-right">
+                    <span class="text-2xl font-black text-gray-900">{{ item.cantidad_solicitada }}</span>
+                    <span class="text-xs text-gray-500 ml-1">{{ item.producto.unidad_medida }}</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Botón de Confirmación Fija Falsa para Papel / Botón Real Web -->
+    <div class="mt-12 text-center text-sm text-gray-400 print:block hidden">
+        Documento interno de Cool & Go generado por Sistema B2B Automático.
+    </div>
+
+    <form action="{% url 'despacho:confirmar' solicitud.pk %}" method="post" class="mt-8 text-right print:hidden">
+        {% csrf_token %}
+        <p class="text-sm text-gray-500 mb-4 inline-block mr-4">Una vez recolectado físicamente todo, confirma para descontar stock.</p>
+        <button type="submit" class="bg-green-600 text-white px-8 py-4 rounded-lg shadow-lg hover:bg-green-700 transition font-black text-xl mb-4">
+            ✓ Finalizar y Descontar ERP
+        </button>
+    </form>
+
+</div>
+{% endblock %}

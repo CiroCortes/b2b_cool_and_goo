@@ -12,6 +12,12 @@ urlpatterns = [
     # Solicitudes B2B (backlog de pedidos + picking FEFO)
     path('solicitudes/', include('solicitudes.urls', namespace='solicitudes')),
 
+    # Módulo Operativo B2B (Piso / Bodega)
+    path('despacho/', include('despacho.urls', namespace='despacho')),
+
+    # Maestro de Inventario B2B (Backoffice / Admin)
+    path('inventario/', include('inventario.urls', namespace='inventario')),
+
     # Dashboard Principal B2B (Cliente / Admin)
     path('', views.dashboard_principal, name='home'),
 ]

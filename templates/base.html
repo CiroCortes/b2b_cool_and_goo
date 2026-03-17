@@ -27,9 +27,16 @@
                 <ul class="flex space-x-6 text-sm font-medium">
                     <!-- Nav items condicionados por auth -->
                     {% if user.is_authenticated %}
+                    <li><a href="{% url 'home' %}" class="hover:text-accent transition-colors font-bold">📊 Dashboard</a></li>
                     <li><a href="{% url 'solicitudes:lista' %}" class="hover:text-accent transition-colors">📋 Backlog</a></li>
                     <li><a href="{% url 'solicitudes:pedido_ia' %}" class="hover:text-accent transition-colors">🤖 Pedir con IA</a></li>
                     <li><a href="{% url 'solicitudes:nueva' %}" class="hover:text-accent transition-colors">+ Nueva OC</a></li>
+                    <li><a href="{% url 'despacho:cola' %}" class="hover:text-amber-300 text-amber-500 transition-colors font-bold">🚜 Piso / Bodega</a></li>
+                    
+                    {% if user.is_staff or user.is_superuser %}
+                    <li><a href="{% url 'inventario:maestro' %}" class="text-indigo-400 hover:text-indigo-200 transition-colors font-black">📦 Kardex FEFO</a></li>
+                    {% endif %}
+                    
                     <li>
                         <a href="{% url 'usuarios:logout' %}"
                            class="bg-secondary px-4 py-2 rounded shadow hover:bg-opacity-90 transition">

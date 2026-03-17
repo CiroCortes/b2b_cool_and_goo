@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Desglose FEFO: {{ producto.codigo }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    
+    <!-- Encabezado y Regreso -->
+    <div class="mb-6 flex justify-between items-center">
+        <a href="{% url 'inventario:maestro' %}" class="text-gray-500 hover:text-primary transition flex items-center gap-2 font-bold">
+            &larr; Volver al Maestro Guardado
+        </a>
+    </div>
+
+    <!-- Ficha del Producto -->
+    <div class="bg-white rounded border shadow p-6 mb-8 flex items-center justify-between border-l-4 border-indigo-500">
+        <div>
+            <p class="text-sm font-bold text-indigo-500 uppercase tracking-widest mb-1">Ficha de Producto</p>
+            <h1 class="text-3xl font-black text-secondary">{{ producto.nombre }}</h1>
+            <p class="text-gray-500 font-mono mt-1">SKU: {{ producto.codigo }} | Unidad: {{ producto.unidad_medida }}</p>
+        </div>
+        <div class="text-right">
+            <p class="text-sm font-bold text-gray-500 uppercase">Regla de Extracción</p>
+            {% if producto.requiere_control_vencimiento %}
+                <span class="inline-block mt-2 bg-blue-100 text-blue-800 font-black px-4 py-2 rounded shadow-inner">
+                    FEFO (Vence Primero, Sale Primero)
+                </span>
+            {% else %}
+                <span class="inline-block mt-2 bg-gray-200 text-gray-800 font-black px-4 py-2 rounded shadow-inner">
+                    FIFO (El más antiguo sale primero)
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Grid de Lotes FEFO -->
+    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <span>📦</span>
+        Lotes Disponibles Físicamente (Ordenados por Salida)
+    </h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for lote in lotes %}
+            <div class="bg-white rounded shadow border border-gray-200 overflow-hidden relative transition hover:shadow-lg hover:-translate-y-1">
+                
+                <!-- Orden Prioridad Badge (FEFO) -->
+                <div class="absolute top-0 right-0 bg-indigo-600 text-white font-black px-3 py-1 rounded-bl-lg text-sm shadow">
+                    Sacar #{{ forloop.counter }}
+                </div>
+
+                <div class="p-5 border-b pb-4">
+                    <p class="text-xs text-gray-500 font-bold uppercase mb-1">Lote / Batch</p>
+                    <p class="font-mono text-xl font-bold text-gray-900">{{ lote.numero_lote }}</p>
+                    
+                    <div class="mt-4 flex justify-between items-end">
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase">Vencimiento</p>
+                            {% if lote.esta_vencido %}
+                                <p class="text-red-600 font-black line-through">{{ lote.fecha_vencimiento|date:"d M Y" }}</p>
+                            {% else %}
+                                <p class="text-gray-800 font-bold">{{ lote.fecha_vencimiento|date:"d M Y" }}</p>
+                                {% if lote.dias_para_vencer < 30 %}
+                                    <p class="text-xs font-bold text-orange-500 bg-orange-100 uppercase px-1 rounded inline-block mt-1">¡Vence en {{ lote.dias_para_vencer }} días!</p>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-500 uppercase mb-1">Stock Físico</p>
+                            <span class="text-3xl font-black {% if lote.cantidad_disponible > 0 %}text-green-600{% else %}text-red-500{% endif %}">
+                                {{ lote.cantidad_disponible }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ubicación Física -->
+                <div class="bg-gray-50 px-5 py-3 border-t">
+                    <div class="flex items-center text-sm text-gray-600">
+                        <span class="mr-2">📍</span>
+                        <span class="font-bold">
+                            {% if lote.ubicacion %}
+                                {{ lote.ubicacion.zona.bodega.nombre }} / {{ lote.ubicacion.zona.nombre }} / <span class="text-indigo-600">{{ lote.ubicacion.codigo }}</span>
+                            {% else %}
+                                <span class="text-red-500">Sin ubicar (Pasillo temporal)</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-span-full bg-white p-10 text-center border-2 border-dashed border-gray-300 rounded-lg">
+                <div class="text-4xl mb-4">💨</div>
+                <h3 class="text-xl font-bold text-gray-800">Cero Stock Físico</h3>
+                <p class="text-gray-500 mt-2">No hay lotes vivos ni vencidos disponibles en bodega para este producto.</p>
+            </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

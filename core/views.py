@@ -22,13 +22,11 @@ def dashboard_principal(request):
         # ---------------------------------------------------------
         mis_solicitudes = Solicitud.objects.filter(cliente=request.user)
         
-        context.update({
-            'total_pedidos': mis_solicitudes.count(),
-            'pedidos_pendientes': mis_solicitudes.filter(estado=Solicitud.Estado.PENDIENTE_BACKLOG).count(),
-            'pedidos_despachados': mis_solicitudes.filter(estado=Solicitud.Estado.DESPACHADA).count(),
-            'ultimas_solicitudes': mis_solicitudes.order_by('-fecha_creacion')[:5],
-            'template_name': 'core/dashboard_cliente.html'
-        })
+        context['total_pedidos'] = mis_solicitudes.count()
+        context['pedidos_pendientes'] = mis_solicitudes.filter(estado=Solicitud.Estado.PENDIENTE_BACKLOG).count()
+        context['pedidos_despachados'] = mis_solicitudes.filter(estado=Solicitud.Estado.DESPACHADA).count()
+        context['ultimas_solicitudes'] = mis_solicitudes.order_by('-fecha_solicitud')[:5]
+        context['template_name'] = 'core/dashboard_cliente.html'
     else:
         # ---------------------------------------------------------
         # DASHBOARD ADMIN / OPERARIO (KPIs)
@@ -49,26 +47,26 @@ def dashboard_principal(request):
         if autorizadas_qs.exists():
             # Calculamos la diferencia en la BD
             duracion = ExpressionWrapper(
-                F('fecha_autorizacion') - F('fecha_creacion'),
+                F('fecha_autorizacion') - F('fecha_solicitud'),
                 output_field=fields.DurationField()
             )
             promedio = autorizadas_qs.annotate(diff=duracion).aggregate(Avg('diff'))['diff__avg']
-            if promedio:
+            import datetime
+            if isinstance(promedio, datetime.timedelta):
                 # Convertimos timedelta a horas redondeadas
                 lead_time_promedio = round(promedio.total_seconds() / 3600, 1)
 
         # KPI 3: Últimos movimientos de inventario (Trazabilidad)
-        ultimos_movimientos = MovimientoStock.objects.select_related('producto', 'lote', 'ubicacion_origen', 'ubicacion_destino').order_by('-fecha')[:8]
+        # En MovimientoStock, el producto está a través del lote y no guarda ruta explícita en MVP
+        ultimos_movimientos = MovimientoStock.objects.select_related('lote__producto').order_by('-fecha')[:8]
 
-        context.update({
-            'pendientes': pendientes,
-            'autorizadas': autorizadas,
-            'en_picking': en_picking,
-            'despachadas': despachadas,
-            'lead_time_promedio': lead_time_promedio,
-            'ultimos_movimientos': ultimos_movimientos,
-            'template_name': 'core/dashboard_admin.html'
-        })
+        context['pendientes'] = pendientes
+        context['autorizadas'] = autorizadas
+        context['en_picking'] = en_picking
+        context['despachadas'] = despachadas
+        context['lead_time_promedio'] = lead_time_promedio
+        context['ultimos_movimientos'] = ultimos_movimientos
+        context['template_name'] = 'core/dashboard_admin.html'
 
     # Renderizamos el template que corresponda según el rol
     return render(request, context['template_name'], context)

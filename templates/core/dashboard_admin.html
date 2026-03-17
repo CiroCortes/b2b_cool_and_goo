@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}Centro de Operaciones - B2B Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    
+    <!-- Welcome Header -->
+    <div class="mb-8 flex justify-between items-end">
+        <div>
+            <h1 class="text-3xl font-bold text-secondary">Centro de Operaciones HUB</h1>
+            <p class="text-gray-500 mt-2">Monitoreo de Backlog, Lead Times y KPIs logísticos del clúster.</p>
+        </div>
+        <div class="text-right">
+            <p class="text-sm text-gray-500">Métrica Principal</p>
+            <p class="text-2xl font-black text-primary">{{ lead_time_promedio }} Horas</p>
+            <p class="text-xs uppercase tracking-wide text-gray-400 font-bold">AVG Lead Time (IA → Autorización)</p>
+        </div>
+    </div>
+
+    <!-- KPIs Row (4 cols) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        
+        <!-- Backlog -->
+        <div class="bg-white rounded-xl shadow p-5 border-t-4 border-gray-300">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">En Backlog</p>
+            <div class="flex items-baseline gap-2">
+                <p class="text-3xl font-black text-secondary">{{ pendientes }}</p>
+                <span class="text-xs text-gray-400">órdenes</span>
+            </div>
+        </div>
+
+        <!-- Autorizadas (FEFO Triggered) -->
+        <div class="bg-white rounded-xl shadow p-5 border-t-4 border-blue-400">
+            <p class="text-xs font-bold text-blue-500 uppercase tracking-wider mb-1">Lotes Asignados</p>
+            <div class="flex items-baseline gap-2">
+                <p class="text-3xl font-black text-blue-900">{{ autorizadas }}</p>
+                <span class="text-xs text-blue-400">listas para pick</span>
+            </div>
+        </div>
+
+        <!-- Picking -->
+        <div class="bg-white rounded-xl shadow p-5 border-t-4 border-yellow-400">
+            <p class="text-xs font-bold text-yellow-600 uppercase tracking-wider mb-1">En Picking</p>
+            <div class="flex items-baseline gap-2">
+                <p class="text-3xl font-black text-yellow-900">{{ en_picking }}</p>
+                <span class="text-xs text-yellow-500">en piso</span>
+            </div>
+        </div>
+
+        <!-- Despachadas -->
+        <div class="bg-white rounded-xl shadow p-5 border-t-4 border-green-500">
+            <p class="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Despachadas</p>
+            <div class="flex items-baseline gap-2">
+                <p class="text-3xl font-black text-green-900">{{ despachadas }}</p>
+                <span class="text-xs text-green-500">histórico</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        
+        <!-- Funnel Visual (1/3 width) -->
+        <div class="xl:col-span-1 border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
+            <h2 class="text-lg font-bold text-secondary mb-6">Pipeline de Ejecución</h2>
+            
+            <!-- Simple CSS Data Funnel -->
+            <div class="space-y-4">
+                
+                <!-- Step 1 -->
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="font-semibold text-gray-600">Ingreso Cliente (Backlog)</span>
+                        <span class="font-bold">{{ pendientes }}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-4">
+                        <div class="bg-gray-400 h-4 rounded-full" style="width: {% if pendientes %}100%{% else %}0%{% endif %}"></div>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div>
+                    <div class="flex justify-between text-sm mb-1 mt-4">
+                        <span class="font-semibold text-blue-600">Procesado FEFO (Autorizada)</span>
+                        <span class="font-bold">{{ autorizadas }}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-4">
+                        <!-- Bar size relative to backlog -->
+                        <div class="bg-blue-400 h-4 rounded-full" style="width: 70%"></div>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div>
+                    <div class="flex justify-between text-sm mb-1 mt-4">
+                        <span class="font-semibold text-yellow-600">Piso / Operaciones (Picking)</span>
+                        <span class="font-bold">{{ en_picking }}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-4">
+                        <div class="bg-yellow-400 h-4 rounded-full" style="width: 40%"></div>
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div>
+                    <div class="flex justify-between text-sm mb-1 mt-4">
+                        <span class="font-semibold text-green-600">Completado (Despacho)</span>
+                        <span class="font-bold">{{ despachadas }}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-4">
+                        <div class="bg-green-500 h-4 rounded-full" style="width: 90%"></div>
+                    </div>
+                </div>
+
+            </div>
+            
+            <a href="{% url 'solicitudes:lista' %}" class="block text-center w-full mt-8 bg-gray-50 text-secondary border border-gray-200 font-bold py-2 rounded shadow-sm hover:bg-gray-100 transition">
+                Ir al Gestor de Solicitudes &rarr;
+            </a>
+
+        </div>
+
+        <!-- Trazabilidad Reciente (2/3 width) -->
+        <div class="xl:col-span-2 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                <h2 class="text-lg font-bold text-secondary">Trazabilidad en Tiempo Real (Inventario)</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-left">
+                    <thead class="bg-white text-gray-500 border-b">
+                        <tr>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-xs">SKU</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-xs">Tipo</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-xs">Cant</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-xs">Ruta (Origen &rarr; Destino)</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-xs text-right">Cuándo</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for mov in ultimos_movimientos %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4">
+                                <span class="font-mono font-bold text-secondary">{{ mov.producto.codigo }}</span>
+                                <p class="text-xs text-gray-500">Lote: {{ mov.lote.codigo_lote }}</p>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if mov.tipo == 'ENTRADA' %}
+                                    <span class="text-green-600 font-bold bg-green-50 px-2 py-1 rounded">▼ Ingreso</span>
+                                {% elif mov.tipo == 'SALIDA' %}
+                                    <span class="text-red-500 font-bold bg-red-50 px-2 py-1 rounded">▲ Egreso</span>
+                                {% else %}
+                                    <span class="text-blue-500 font-bold bg-blue-50 px-2 py-1 rounded">↔ Traslado</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 font-bold text-secondary">{{ mov.cantidad }}</td>
+                            <td class="px-6 py-4">
+                                <div class="text-xs">
+                                    <p class="text-gray-400">De: <span class="text-gray-700 font-medium">{{ mov.ubicacion_origen.codigo|default:"Externa" }}</span></p>
+                                    <p class="text-gray-400 mt-1">A: <span class="text-gray-700 font-medium">{{ mov.ubicacion_destino.codigo|default:"Externa" }}</span></p>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-right text-gray-500 text-xs">
+                                {{ mov.fecha|timesince }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-gray-500">No hay movimientos logísticos registrados aún.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

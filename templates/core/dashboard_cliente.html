@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard B2B - Cliente{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    
+    <!-- Welcome Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-secondary">Bienvenido al Portal B2B</h1>
+        <p class="text-gray-500 mt-2">Visión general de tus operaciones logísticas y pedidos.</p>
+    </div>
+
+    <!-- KPIs Row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        
+        <!-- Total Pedidos -->
+        <div class="bg-white rounded-xl shadow p-6 border-l-4 border-primary">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-gray-500 uppercase tracking-widest">Total Pedidos</p>
+                    <p class="text-3xl font-bold text-secondary mt-1">{{ total_pedidos }}</p>
+                </div>
+                <div class="p-3 bg-blue-50 rounded-lg text-primary text-2xl">
+                    📦
+                </div>
+            </div>
+        </div>
+
+        <!-- En Backlog / Proceso -->
+        <div class="bg-white rounded-xl shadow p-6 border-l-4 border-yellow-400">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-gray-500 uppercase tracking-widest">Pendientes</p>
+                    <p class="text-3xl font-bold text-secondary mt-1">{{ pedidos_pendientes }}</p>
+                </div>
+                <div class="p-3 bg-yellow-50 rounded-lg text-yellow-500 text-2xl">
+                    ⏳
+                </div>
+            </div>
+        </div>
+
+        <!-- Despachados -->
+        <div class="bg-white rounded-xl shadow p-6 border-l-4 border-green-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-gray-500 uppercase tracking-widest">Despachados</p>
+                    <p class="text-3xl font-bold text-secondary mt-1">{{ pedidos_despachados }}</p>
+                </div>
+                <div class="p-3 bg-green-50 rounded-lg text-green-500 text-2xl">
+                    🚚
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Left Column: Últimas Solicitudes (2/3 width) -->
+        <div class="lg:col-span-2">
+            <div class="bg-white shadow rounded-xl overflow-hidden">
+                <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-secondary">Mis Últimos Pedidos</h2>
+                    <a href="{% url 'solicitudes:lista' %}" class="text-sm text-primary hover:text-opacity-80 font-medium">Ver todos &rarr;</a>
+                </div>
+                
+                {% if ultimas_solicitudes %}
+                <ul class="divide-y divide-gray-100">
+                    {% for sol in ultimas_solicitudes %}
+                    <li class="p-6 hover:bg-gray-50 transition">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-bold text-primary">Solicitud #{{ sol.pk }}</span>
+                            <span class="text-sm text-gray-500">{{ sol.fecha_creacion|date:"d M Y, H:i" }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">
+                                {% if sol.referencia_cliente %}Ref: {{ sol.referencia_cliente }}{% else %}Sin Referencia{% endif %}
+                            </span>
+                            
+                            <!-- Badge Estado DRY -->
+                            {% if sol.estado == 'BACKLOG' %}
+                                <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded font-semibold uppercase">En Backlog</span>
+                            {% elif sol.estado == 'AUTORIZADA' %}
+                                <span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded font-semibold uppercase">Autorizada</span>
+                            {% elif sol.estado == 'PICKING' %}
+                                <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded font-semibold uppercase">En Picking FEFO</span>
+                            {% elif sol.estado == 'DESPACHADA' %}
+                                <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-semibold uppercase">Despachada</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="p-10 text-center text-gray-500">
+                    <p class="mb-4">No tienes pedidos registrados aún.</p>
+                    <a href="{% url 'solicitudes:pedido_ia' %}" class="bg-primary text-white px-4 py-2 rounded shadow hover:bg-opacity-90 inline-block">
+                        🤖 Crear Primer Pedido con IA
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Column: Quick Actions (1/3 width) -->
+        <div class="space-y-6">
+            <div class="bg-gradient-to-br from-primary to-secondary rounded-xl shadow-lg p-6 text-white">
+                <h3 class="font-bold text-xl mb-2">Pedidos Inteligentes</h3>
+                <p class="text-sm opacity-90 mb-6">
+                    Realiza tu orden de compra escribiendo exactamente lo que necesitas. Nuestra IA con Gemini lo convertirá a un formato B2B instantáneamente.
+                </p>
+                <a href="{% url 'solicitudes:pedido_ia' %}" class="block text-center w-full bg-white text-secondary font-bold py-3 rounded-lg shadow hover:bg-gray-100 transition">
+                    Probar IA Pedidos &rarr;
+                </a>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                <h3 class="font-bold text-secondary mb-4">Ayuda y Contacto</h3>
+                <p class="text-sm text-gray-600 mb-2">¿Problemas con un despacho? Contacta a tu account manager en Cool & Go.</p>
+                <a href="#" class="text-sm text-primary font-medium hover:underline">📩 soporte@coolandgo.com</a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
