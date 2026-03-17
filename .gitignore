@@ -1,0 +1,61 @@
+# =============================================================
+# Cool & Go B2B - Django .gitignore
+# =============================================================
+
+# Entorno Virtual
+venv/
+.venv/
+env/
+ENV/
+
+# Variables de entorno (NO subir credenciales)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+static/
+
+# Tailwind / Node (si se usa)
+node_modules/
+package-lock.json
+yarn.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Tests
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Render / Deploy
+.render/
+render.yaml
+
+# Archivos temporales del proyecto
+systemaPedidosPesco/
+stcok_ejemplo_coolandgo.xlsx
+error.log

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Iniciar Sesión - Cool & Go B2B{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-background-light px-4">
+    <div class="w-full max-w-md">
+
+        <!-- Logo / Header del Card -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-primary">Cool <span class="text-secondary">&</span> Go</h1>
+            <p class="text-gray-500 mt-1 text-sm tracking-widest uppercase">Portal B2B - Acceso Seguro</p>
+        </div>
+
+        <!-- Card de Login -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+
+            <!-- Header del card -->
+            <div class="bg-primary px-8 py-5">
+                <h2 class="text-white text-lg font-semibold">Bienvenido</h2>
+                <p class="text-accent text-sm">Ingresa tus credenciales para continuar</p>
+            </div>
+
+            <!-- Mensajes de error -->
+            {% if form.errors %}
+            <div class="bg-red-50 border-l-4 border-red-500 px-6 py-3 mx-6 mt-4 rounded">
+                <p class="text-red-700 text-sm font-medium">
+                    ⚠ Usuario o contraseña incorrectos. Por favor verifica tus datos.
+                </p>
+            </div>
+            {% endif %}
+
+            <!-- Formulario -->
+            <form method="post" class="px-8 py-6 space-y-5">
+                {% csrf_token %}
+
+                <!-- Campo Username -->
+                <div>
+                    <label for="id_username" class="block text-sm font-medium text-secondary mb-1">
+                        Usuario
+                    </label>
+                    <input
+                        type="text"
+                        name="username"
+                        id="id_username"
+                        autocomplete="username"
+                        required
+                        placeholder="Ingresa tu nombre de usuario"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                    >
+                </div>
+
+                <!-- Campo Password -->
+                <div>
+                    <label for="id_password" class="block text-sm font-medium text-secondary mb-1">
+                        Contraseña
+                    </label>
+                    <input
+                        type="password"
+                        name="password"
+                        id="id_password"
+                        autocomplete="current-password"
+                        required
+                        placeholder="••••••••"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                    >
+                </div>
+
+                <!-- Botón de acceso -->
+                <button
+                    type="submit"
+                    class="w-full bg-primary hover:bg-opacity-90 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md hover:shadow-lg"
+                >
+                    Iniciar Sesión →
+                </button>
+
+            </form>
+
+        </div>
+
+        <!-- Footer del Login -->
+        <p class="text-center text-xs text-gray-400 mt-6">
+            &copy; 2024 Cool & Go B2B — Sistema de Gestión de Pedidos
+        </p>
+
+    </div>
+</div>
+{% endblock %}

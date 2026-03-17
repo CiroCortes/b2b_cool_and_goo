@@ -1,0 +1,67 @@
+{% load tailwind_tags %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cool & Go B2B MVP{% endblock %}</title>
+
+    <!-- Tailwind CSS (via django-tailwind) -->
+    {% tailwind_css %}
+
+    <!-- Custom Head block for additional CSS/JS if needed -->
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-background-light text-secondary font-sans leading-normal tracking-normal min-h-screen flex flex-col">
+
+    <!-- Header Principal -->
+    <header class="bg-primary text-white shadow-md">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="/" class="text-2xl font-bold tracking-tight">
+                Cool & Go <span class="text-accent font-light">B2B</span>
+            </a>
+
+            <nav>
+                <ul class="flex space-x-6 text-sm font-medium">
+                    <!-- Nav items will be defined by Auth roles, for now we leave placeholders -->
+                    <li><a href="#" class="hover:text-accent transition-colors">Dashboard</a></li>
+                    <li><a href="#" class="hover:text-accent transition-colors">Recepción</a></li>
+                    <li><a href="#" class="hover:text-accent transition-colors">Picking</a></li>
+                    <li>
+                        <a href="#" class="bg-secondary px-4 py-2 rounded shadow hover:bg-opacity-90 transition">
+                            Cerrar Sesión
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow container mx-auto px-6 py-8">
+        {% block content %}
+
+        <!-- Placeholder content when a child template doesn't load a block -->
+        <div class="text-center py-20">
+            <h1 class="text-3xl font-bold text-secondary mb-4">¡Bienvenido al ERP B2B!</h1>
+            <p class="text-gray-600">Este es el layout base (DRY). El sistema base está correctamente montado.</p>
+        </div>
+
+        {% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-background-dark text-white text-center py-6 mt-auto">
+        <p class="text-sm opacity-75">
+            &copy; 2024 Cool & Go B2B. Todos los derechos reservados.<br>
+            Powered by 3con Engine.
+        </p>
+    </footer>
+
+    <!-- Custom Scripts block -->
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>
