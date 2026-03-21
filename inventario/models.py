@@ -70,14 +70,28 @@ class Ubicacion(models.Model):
 
 
 class Producto(models.Model):
-    """SKU / Artículo del catálogo de Cool & Go."""
+    """
+    SKU / Artículo del catálogo de Cool & Go.
+    [CRÍTICO] Cada producto pertenece a una Empresa cliente específica.
+    Esto garantiza el aislamiento total de inventario entre clientes.
+    """
+    # --- CLAVE MULTICLIENTE ---
+    empresa = models.ForeignKey(
+        'usuarios.Empresa',
+        on_delete=models.PROTECT,
+        related_name='productos',
+        verbose_name='Empresa Propietaria',
+        help_text='Empresa dueña de este SKU. El cliente solo verá sus propios productos.'
+    )
+
     codigo = models.CharField(
         max_length=50, unique=True, verbose_name='Código / SKU'
     )
     nombre = models.CharField(max_length=200, verbose_name='Nombre del Producto')
     descripcion = models.TextField(blank=True)
-    unidad_medida = models.CharField(
-        max_length=30, default='Caja', verbose_name='Unidad de Medida'
+    ean13 = models.CharField(max_length=50, blank=True, verbose_name='EAN 13')
+    uom = models.CharField(
+        max_length=30, default='CAJA', verbose_name='Unidad de Medida (UoM)'
     )
     requiere_control_vencimiento = models.BooleanField(
         default=True,
@@ -89,10 +103,12 @@ class Producto(models.Model):
     class Meta:
         verbose_name = 'Producto / SKU'
         verbose_name_plural = 'Productos / SKUs'
-        ordering = ['codigo']
+        ordering = ['empresa', 'codigo']
 
     def __str__(self):
-        return f'[{self.codigo}] {self.nombre}'
+        empresa_str = f'[{self.empresa}] ' if self.empresa else ''
+        return f'{empresa_str}[{self.codigo}] {self.nombre}'
+
 
 
 class Lote(models.Model):
@@ -109,13 +125,19 @@ class Lote(models.Model):
     )
     numero_lote = models.CharField(max_length=100, verbose_name='N° de Lote')
     cantidad_disponible = models.PositiveIntegerField(default=0)
+    hu = models.CharField(max_length=50, blank=True, null=True, verbose_name='Handling Unit (HU)')
+    hu_padre = models.CharField(max_length=50, blank=True, null=True, verbose_name='HU Padre')
+    m3 = models.DecimalField(max_digits=12, decimal_places=4, blank=True, null=True, verbose_name='Volumen (M3)')
+    dias_estado = models.IntegerField(default=0, verbose_name='Días Estado')
 
     # Claves para FIFO/FEFO — campos OBLIGATORIOS al recibir mercancía
     fecha_fabricacion = models.DateField(
+        null=True, blank=True,
         verbose_name='Fecha de Fabricación',
         help_text='Clave para lógica FIFO (First In First Out).'
     )
     fecha_vencimiento = models.DateField(
+        null=True, blank=True,
         verbose_name='Fecha de Vencimiento',
         help_text='Clave para lógica FEFO (First Expired First Out).'
     )

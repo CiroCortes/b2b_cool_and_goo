@@ -2,6 +2,13 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
+class SolicitudManager(models.Manager):
+    def para_usuario(self, user):
+        if hasattr(user, 'perfil') and user.perfil.es_cliente:
+            return self.filter(cliente=user)
+        return self.all()
+
+
 class Solicitud(models.Model):
     """
     Representa un pedido B2B de un cliente externo o generado por IA.
@@ -38,6 +45,21 @@ class Solicitud(models.Model):
         default=Prioridad.NORMAL
     )
 
+    # --- CROSSDOCKING ---
+    es_crossdocking = models.BooleanField(
+        default=False,
+        verbose_name='¿Es operación de Crossdocking?',
+        help_text='Activo cuando la O.C. debe repartirse a múltiples destinos de entrega.'
+    )
+    centro_distribucion = models.ForeignKey(
+        'usuarios.PuntoEntrega',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='solicitudes_entrantes',
+        verbose_name='Centro de Distribución (CD)',
+        help_text='Punto intermedio que recibe TODO el despacho y lo redistribuye.'
+    )
+
     # Campos de trazabilidad temporal (clave para KPI Lead Time)
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
     fecha_requerida = models.DateField(
@@ -69,6 +91,8 @@ class Solicitud(models.Model):
         verbose_name_plural = 'Solicitudes B2B'
         ordering = ['-fecha_solicitud']
 
+    objects = SolicitudManager()
+
     def __str__(self):
         return f'Solicitud #{self.pk} | {self.cliente.username} | {self.get_estado_display()}'
 
@@ -87,10 +111,22 @@ class Solicitud(models.Model):
     def total_items(self):
         return self.items.count()
 
+    def agregar_o_sumar_item(self, producto, cantidad):
+        """DRY-01: Agrega un nuevo ítem o suma la cantidad si ya existe."""
+        item, created = self.items.get_or_create(
+            producto=producto,
+            defaults={'cantidad_solicitada': 0}
+        )
+        item.cantidad_solicitada += cantidad
+        item.save(update_fields=['cantidad_solicitada'])
+        return item, created
+
 
 class ItemSolicitud(models.Model):
     """
     Detalle de cada línea de producto dentro de una Solicitud.
+    En operaciones de Crossdocking, cada línea puede tener un destino_final
+    diferente dentro de la misma O.C.
     DRY: Reutiliza el modelo Producto del inventario.
     """
     solicitud = models.ForeignKey(
@@ -107,6 +143,16 @@ class ItemSolicitud(models.Model):
     lote_asignado = models.ForeignKey(
         'inventario.Lote', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='asignaciones'
+    )
+
+    # --- CROSSDOCKING: destino específico de este ítem ---
+    destino_final = models.ForeignKey(
+        'usuarios.PuntoEntrega',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='items_a_entregar',
+        verbose_name='Destino Final (Sub-cliente)',
+        help_text='Local o punto de despacho final para esta línea del pedido.'
     )
 
     class Meta:

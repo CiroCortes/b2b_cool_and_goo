@@ -22,29 +22,24 @@ from inventario.models import Producto
 logger = logging.getLogger(__name__)
 
 
-def _get_catalogo_texto():
+def _get_catalogo_texto(empresa=None):
     """
     DRY: Genera un texto resumen del catálogo de productos activos.
-    Se inyecta en el prompt para que Gemini conozca los SKUs disponibles.
+    Si se pasa empresa, filtra solo los de esa empresa (Multi-tenant B2B).
     """
-    productos = Producto.objects.filter(activo=True).values('codigo', 'nombre')
+    productos = Producto.objects.filter(activo=True)
+    if empresa:
+        productos = productos.filter(empresa=empresa)
+    
+    productos = productos.values('codigo', 'nombre')
     lineas = [f"- {p['codigo']}: {p['nombre']}" for p in productos]
     return "\n".join(lineas)
 
 
-def procesar_pedido_con_gemini(texto_libre: str) -> dict:
+def procesar_pedido_con_gemini(texto_libre: str = None, archivo_path: str = None, empresa=None) -> dict:
     """
-    Procesa un texto libre del cliente y extrae los ítems del pedido.
-
-    Args:
-        texto_libre: Texto en lenguaje natural del cliente.
-
-    Returns:
-        dict con:
-          - 'items': lista de {'codigo': str, 'cantidad': int, 'producto': Producto|None}
-          - 'texto_original': el texto enviado
-          - 'exito': bool
-          - 'error': str si hay problema
+    Procesa un texto o un archivo y extrae los ítems del pedido.
+    Filtra por empresa para asegurar aislamiento B2B.
     """
     if not settings.GEMINI_API_KEY:
         return {'exito': False, 'error': 'GEMINI_API_KEY no configurada.', 'items': []}
@@ -52,17 +47,14 @@ def procesar_pedido_con_gemini(texto_libre: str) -> dict:
     try:
         genai.configure(api_key=settings.GEMINI_API_KEY)
         model = genai.GenerativeModel('gemini-2.5-flash')
-
-        catalogo = _get_catalogo_texto()
+        catalogo = _get_catalogo_texto(empresa=empresa)
 
         prompt = f"""Eres un asistente de gestión de pedidos B2B para una empresa distribuidora de alimentos.
-Analiza el siguiente pedido en texto libre de un cliente y extrae los productos y cantidades solicitadas.
+Analiza la solicitud de pedido proporcionada (ya sea en texto o en un documento/imagen adjunto) 
+y extrae los productos y cantidades solicitadas.
 
 CATÁLOGO DE PRODUCTOS DISPONIBLES (usar exactamente estos códigos):
 {catalogo}
-
-PEDIDO DEL CLIENTE:
-{texto_libre}
 
 INSTRUCCIONES:
 1. Identifica cada producto mencionado y búscalo en el catálogo.
@@ -78,10 +70,19 @@ Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown:
   ]
 }}"""
 
-        response = model.generate_content(prompt)
+        # Armar el contenido a enviar
+        contents = [prompt]
+        if archivo_path:
+            # Subir el archivo a Gemini (Files API)
+            archivo_subido = genai.upload_file(path=archivo_path)
+            contents.append(archivo_subido)
+        if texto_libre:
+            contents.append(f"\n\nPEDIDO DEL CLIENTE:\n{texto_libre}")
+
+        response = model.generate_content(contents)
         texto_respuesta = response.text.strip()
 
-        # Limpiar posibles bloques de markdown
+        # Limpiar posible markdown
         if texto_respuesta.startswith('```'):
             lineas = texto_respuesta.split('\n')
             texto_respuesta = '\n'.join(lineas[1:-1])
@@ -89,7 +90,6 @@ Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown:
         datos = json.loads(texto_respuesta)
         items_raw = datos.get('items', [])
 
-        # Cruzar los SKUs con la base de datos
         items_resultado = []
         for item in items_raw:
             codigo = item.get('codigo')
@@ -98,7 +98,10 @@ Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown:
 
             producto = None
             if codigo:
-                producto = Producto.objects.filter(codigo=codigo, activo=True).first()
+                prod_qs = Producto.objects.filter(codigo=codigo, activo=True)
+                if empresa:
+                    prod_qs = prod_qs.filter(empresa=empresa)
+                producto = prod_qs.first()
 
             items_resultado.append({
                 'codigo': codigo,
@@ -111,7 +114,7 @@ Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown:
         return {
             'exito': True,
             'items': items_resultado,
-            'texto_original': texto_libre,
+            'texto_original': texto_libre or f"[Archivo procesado]",
             'error': None,
         }
 

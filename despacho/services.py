@@ -15,79 +15,83 @@ from datetime import date
 from inventario.models import Lote
 
 
-def obtener_lote_fefo_fifo(producto, cantidad_requerida):
+def obtener_lotes_fefo_fifo(producto, cantidad_requerida):
     """
-    Retorna el Lote óptimo para pickear según la regla FEFO o FIFO.
-    
-    Args:
-        producto: instancia de inventario.Producto
-        cantidad_requerida: int con la cantidad a despachar
-
-    Returns:
-        dict con {'lote': Lote, 'cantidad': int} o None si no hay stock.
+    Retorna los Lotes óptimos para pickear según la regla FEFO o FIFO,
+    iterando hasta satisfacer la cantidad requerida.
     """
     hoy = date.today()
 
-    # Base queryset: solo lotes disponibles, con stock, no vencidos
     lotes_disponibles = Lote.objects.filter(
         producto=producto,
         estado=Lote.Estado.DISPONIBLE,
         cantidad_disponible__gt=0,
-        fecha_vencimiento__gte=hoy  # Nunca sacar vencidos
+        fecha_vencimiento__gte=hoy
     )
 
     if not lotes_disponibles.exists():
-        return None
+        return []
 
-    # Aplicar FEFO si el producto lo requiere, sino FIFO
     if producto.requiere_control_vencimiento:
-        # FEFO: vencimiento más próximo primero (el default Meta ordering lo hace)
-        lote = lotes_disponibles.order_by('fecha_vencimiento', 'fecha_ingreso').first()
+        lotes_qs = lotes_disponibles.order_by('fecha_vencimiento', 'fecha_ingreso')
     else:
-        # FIFO: Lote más antiguo por fecha de fabricación
-        lote = lotes_disponibles.order_by('fecha_fabricacion', 'fecha_ingreso').first()
+        lotes_qs = lotes_disponibles.order_by('fecha_fabricacion', 'fecha_ingreso')
 
-    if not lote:
-        return None
+    asignaciones = []
+    faltante = cantidad_requerida
 
-    # Calcular cuánto podemos sacar de este lote
-    cantidad_a_despachar = min(cantidad_requerida, lote.cantidad_disponible)
+    for lote in lotes_qs:
+        if faltante <= 0:
+            break
+            
+        a_sacar = min(faltante, lote.cantidad_disponible)
+        asignaciones.append({
+            'lote': lote,
+            'cantidad': a_sacar,
+            'regla': 'FEFO' if producto.requiere_control_vencimiento else 'FIFO'
+        })
+        faltante -= a_sacar
 
-    return {
-        'lote': lote,
-        'cantidad': cantidad_a_despachar,
-        'stock_disponible': lote.cantidad_disponible,
-        'regla_aplicada': 'FEFO' if producto.requiere_control_vencimiento else 'FIFO',
-        'dias_para_vencer': lote.dias_para_vencer,
-    }
+    return asignaciones
 
 
-def asignar_lotes_a_solicitud(solicitud):
-    """
-    Recorre todos los items de una Solicitud y asigna automáticamente
-    el Lote correcto según FEFO/FIFO a cada ItemSolicitud.
+def procesar_despacho_fisico(solicitud, despachado_por):
+    from django.db import transaction
+    from inventario.models import MovimientoStock
+    from django.utils import timezone
+    
+    with transaction.atomic():
+        items = solicitud.items.select_related('lote_asignado').all()
+        
+        for item in items:
+            # Solo procesamos si hay un lote asignado y cantidad pendiente
+            if item.lote_asignado and item.cantidad_solicitada > 0 and item.cantidad_despachada < item.cantidad_solicitada:
+                lote = item.lote_asignado
+                
+                # Validamos stock real antes de tocar
+                cant_a_despachar = min(item.cantidad_solicitada - item.cantidad_despachada, lote.cantidad_disponible)
+                
+                if cant_a_despachar > 0:
+                    lote.cantidad_disponible -= cant_a_despachar
+                    if lote.cantidad_disponible == 0:
+                        lote.estado = Lote.Estado.AGOTADO
+                    lote.save(update_fields=['cantidad_disponible', 'estado'])
+                    
+                    item.cantidad_despachada += cant_a_despachar
+                    item.save(update_fields=['cantidad_despachada'])
+                    
+                    MovimientoStock.objects.create(
+                        lote=lote,
+                        tipo=MovimientoStock.TipoMovimiento.SALIDA,
+                        cantidad=cant_a_despachar,
+                        referencia=f'Despacho Solicitud #{solicitud.pk}',
+                        realizado_por=despachado_por
+                    )
 
-    Returns:
-        dict con resultado por ítem.
-    """
-    resultados = []
-    for item in solicitud.items.select_related('producto').all():
-        resultado = obtener_lote_fefo_fifo(item.producto, item.cantidad_solicitada)
-        if resultado:
-            item.lote_asignado = resultado['lote']
-            item.save(update_fields=['lote_asignado'])
-            resultados.append({
-                'producto': item.producto.codigo,
-                'lote': str(resultado['lote']),
-                'regla': resultado['regla_aplicada'],
-                'ok': True,
-            })
-        else:
-            resultados.append({
-                'producto': item.producto.codigo,
-                'lote': None,
-                'regla': None,
-                'ok': False,
-                'error': 'Sin stock disponible o todo vencido'
-            })
-    return resultados
+        # Siempre cerramos la solicitud al "Finalizar", incluso si fue parcial por falta de stock
+        solicitud.estado = solicitud.Estado.DESPACHADA
+        solicitud.despachado_por = despachado_por
+        solicitud.fecha_despacho = timezone.now()
+        solicitud.save(update_fields=['estado', 'despachado_por', 'fecha_despacho'])
+            
+        return True

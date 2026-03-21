@@ -27,7 +27,7 @@ class ZonaAdmin(admin.ModelAdmin):
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
-    list_display = ('codigo', 'nombre', 'unidad_medida', 'requiere_control_vencimiento', 'activo')
+    list_display = ('empresa', 'codigo', 'nombre', 'ean13', 'uom', 'requiere_control_vencimiento', 'activo')
     list_filter = ('requiere_control_vencimiento', 'activo')
     search_fields = ('codigo', 'nombre')
 
@@ -35,9 +35,8 @@ class ProductoAdmin(admin.ModelAdmin):
 @admin.register(Lote)
 class LoteAdmin(admin.ModelAdmin):
     list_display = (
-        'numero_lote', 'producto', 'ubicacion',
-        'cantidad_disponible', 'fecha_fabricacion',
-        'fecha_vencimiento', 'dias_para_vencer', 'estado'
+        'numero_lote', 'producto', 'ubicacion', 'hu', 'm3',
+        'cantidad_disponible', 'fecha_vencimiento', 'estado', 'dias_estado'
     )
     list_filter = ('estado', 'producto')
     search_fields = ('numero_lote', 'producto__codigo', 'producto__nombre')

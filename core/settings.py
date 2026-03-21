@@ -22,21 +22,20 @@ env = environ.Env(
     DEBUG=(bool, False)
 )
 
-# Read .env file
-with open(os.path.join(BASE_DIR, '.env'), encoding='utf-8') as env_file:
-    environ.Env.read_env(env_file)
+# Read .env file smoothly (A-09: previene FileNotFoundError si no existe en CI/CD)
+environ.Env.read_env(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY', default='django-insecure-49zh$se%bj0i6%70d#%wau*mas3)-em2c10fb!1d704qkh@+#)')
+SECRET_KEY = env('SECRET_KEY', default='django-insecure-dev-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG', default=True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '*'])
 
 
 # Application definition
@@ -135,9 +134,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-cl'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Santiago'
 
 USE_I18N = True
 

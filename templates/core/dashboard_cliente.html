@@ -96,7 +96,7 @@
                 {% else %}
                 <div class="p-10 text-center text-gray-500">
                     <p class="mb-4">No tienes pedidos registrados aún.</p>
-                    <a href="{% url 'solicitudes:pedido_ia' %}" class="bg-primary text-white px-4 py-2 rounded shadow hover:bg-opacity-90 inline-block">
+                    <a href="{% url 'solicitudes:nueva' %}" class="bg-primary text-white px-4 py-2 rounded shadow hover:bg-opacity-90 inline-block">
                         🤖 Crear Primer Pedido con IA
                     </a>
                 </div>
@@ -111,7 +111,7 @@
                 <p class="text-sm opacity-90 mb-6">
                     Realiza tu orden de compra escribiendo exactamente lo que necesitas. Nuestra IA con Gemini lo convertirá a un formato B2B instantáneamente.
                 </p>
-                <a href="{% url 'solicitudes:pedido_ia' %}" class="block text-center w-full bg-white text-secondary font-bold py-3 rounded-lg shadow hover:bg-gray-100 transition">
+                <a href="{% url 'solicitudes:nueva' %}" class="block text-center w-full bg-white text-secondary font-bold py-3 rounded-lg shadow hover:bg-gray-100 transition">
                     Probar IA Pedidos &rarr;
                 </a>
             </div>

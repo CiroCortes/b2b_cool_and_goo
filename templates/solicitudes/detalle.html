@@ -22,12 +22,14 @@
             {{ solicitud.get_estado_display }}
         </span>
         {% if solicitud.estado == 'PENDIENTE_BACKLOG' %}
-        <div class="mt-2">
-            <a href="{% url 'solicitudes:autorizar' solicitud.pk %}"
-               class="inline-block bg-green-600 text-white text-sm px-4 py-1.5 rounded-lg hover:bg-green-700 transition">
-                Autorizar →
-            </a>
-        </div>
+            {% if user.is_superuser or user.perfil.es_operador or user.perfil.es_admin %}
+            <div class="mt-2">
+                <a href="{% url 'solicitudes:autorizar' solicitud.pk %}"
+                   class="inline-block bg-green-600 text-white text-sm px-4 py-1.5 rounded-lg hover:bg-green-700 transition">
+                    Autorizar →
+                </a>
+            </div>
+            {% endif %}
         {% endif %}
     </div>
 </div>

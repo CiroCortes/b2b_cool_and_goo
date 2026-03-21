@@ -116,14 +116,68 @@
 
             </div>
             
-            <a href="{% url 'solicitudes:lista' %}" class="block text-center w-full mt-8 bg-gray-50 text-secondary border border-gray-200 font-bold py-2 rounded shadow-sm hover:bg-gray-100 transition">
-                Ir al Gestor de Solicitudes &rarr;
-            </a>
-
         </div>
 
-        <!-- Trazabilidad Reciente (2/3 width) -->
-        <div class="xl:col-span-2 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
+        <!-- Backlog de Acción Inmediata (2/3 width) -->
+        <div class="xl:col-span-2 border border-primary/20 rounded-xl bg-white shadow-sm overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                <h2 class="text-lg font-bold text-secondary flex items-center gap-2">
+                    <span>⚡</span> Seguimiento de Operaciones Activas
+                </h2>
+                <a href="{% url 'solicitudes:lista' %}" class="text-xs font-bold text-primary hover:underline">Ver Backlog Completo &rarr;</a>
+            </div>
+            <div class="flex-grow">
+                <table class="min-w-full text-sm text-left">
+                    <thead class="bg-white text-gray-500 border-b">
+                        <tr>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-[10px]">ID</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-[10px]">Cliente</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-[10px]">Estado</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-[10px]">Fecha Req.</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-[10px] text-right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for s in pendientes_list %}
+                        <tr class="hover:bg-gray-50 bg-white">
+                            <td class="px-6 py-3 font-mono font-bold text-primary">#{{ s.pk }}</td>
+                            <td class="px-6 py-3 font-medium text-secondary">{{ s.cliente.perfil.empresa.nombre_fantasia|default:s.cliente.perfil.empresa.nombre }}</td>
+                            <td class="px-6 py-3">
+                                {% if s.estado == 'PENDIENTE_BACKLOG' %}
+                                    <span class="bg-yellow-100 text-yellow-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Pendiente</span>
+                                {% elif s.estado == 'AUTORIZADA' %}
+                                    <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Autorizada</span>
+                                {% elif s.estado == 'EN_PICKING' %}
+                                    <span class="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-0.5 rounded-full">En Picking</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3 text-gray-400 font-medium">{{ s.fecha_requerida|date:"d M" }}</td>
+                            <td class="px-6 py-3 text-right">
+                                {% if s.estado == 'PENDIENTE_BACKLOG' %}
+                                    <a href="{% url 'solicitudes:autorizar' s.pk %}" class="bg-primary text-white px-3 py-1 rounded text-[10px] font-bold hover:bg-opacity-90 transition">
+                                        Autorizar
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'despacho:ejecutar' s.pk %}" class="bg-secondary text-white px-3 py-1 rounded text-[10px] font-bold hover:bg-opacity-90 transition">
+                                        Picking &rarr;
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-10 text-center text-gray-400 italic">
+                                ¡Buen trabajo! No hay solicitudes pendientes de autorización en el backlog.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Trazabilidad Reciente (Full width in this row or 2/3) -->
+        <div class="xl:col-span-3 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
                 <h2 class="text-lg font-bold text-secondary">Trazabilidad en Tiempo Real (Inventario)</h2>
             </div>

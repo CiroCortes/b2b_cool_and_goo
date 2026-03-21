@@ -1,26 +1,47 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from usuarios.decorators import operador_required
 from django.contrib import messages
 from django.utils import timezone
+from django.db import models
 
 from .models import Solicitud, ItemSolicitud
 from .forms import SolicitudForm, ItemSolicitudForm
 from .ia_service import procesar_pedido_con_gemini
-from despacho.services import asignar_lotes_a_solicitud
+from .services import asignar_lotes_a_solicitud
+from usuarios.models import Empresa
 
 
 @login_required
 def lista_solicitudes(request):
     """Vista principal del backlog de solicitudes."""
-    # DRY: filtramos según el rol del usuario
-    perfil = getattr(request.user, 'perfil', None)
-    if perfil and perfil.es_cliente:
-        solicitudes = Solicitud.objects.filter(cliente=request.user)
-    else:
-        solicitudes = Solicitud.objects.all()
+    solicitudes = Solicitud.objects.para_usuario(request.user)
+    empresas = None
+    empresa_id = request.GET.get('empresa')
+
+    # Si es Operador/Admin, permitimos filtrar por empresa y estado
+    if not (hasattr(request.user, 'perfil') and request.user.perfil.es_cliente):
+        empresas = Empresa.objects.filter(activa=True)
+        if empresa_id:
+            solicitudes = solicitudes.filter(cliente__perfil__empresa_id=empresa_id)
+        
+        estado_filtro = request.GET.get('estado')
+        if estado_filtro:
+            solicitudes = solicitudes.filter(estado=estado_filtro)
+
+    # Ordenar: Pendientes primero (Acción requerida para el operador)
+    solicitudes = solicitudes.order_by(
+        models.Case(
+            models.When(estado='PENDIENTE_BACKLOG', then=models.Value(0)),
+            default=models.Value(1)
+        ),
+        '-fecha_solicitud'
+    )
 
     context = {
         'solicitudes': solicitudes,
+        'empresas': empresas,
+        'empresa_id': empresa_id,
         'titulo': 'Backlog de Solicitudes B2B',
     }
     return render(request, 'solicitudes/lista.html', context)
@@ -30,15 +51,20 @@ def lista_solicitudes(request):
 def nueva_solicitud(request):
     """Crea una nueva solicitud B2B."""
     if request.method == 'POST':
-        form = SolicitudForm(request.POST)
+        form = SolicitudForm(request.POST, user=request.user)
         if form.is_valid():
             solicitud = form.save(commit=False)
-            solicitud.cliente = request.user
+            # Si el usuario es cliente, se auto-asigna. Si no, viene del form.
+            if hasattr(request.user, 'perfil') and request.user.perfil.es_cliente:
+                solicitud.cliente = request.user
+            else:
+                solicitud.cliente = form.cleaned_data.get('cliente')
+            
             solicitud.save()
             messages.success(request, f'Solicitud #{solicitud.pk} creada correctamente.')
             return redirect('solicitudes:agregar_item', pk=solicitud.pk)
     else:
-        form = SolicitudForm()
+        form = SolicitudForm(user=request.user)
 
     return render(request, 'solicitudes/form.html', {
         'form': form,
@@ -48,32 +74,92 @@ def nueva_solicitud(request):
 
 @login_required
 def agregar_item(request, pk):
-    """Agrega productos a una solicitud existente."""
+    """
+    Paso 2 de Creación Híbrida.
+    Agrega productos a una solicitud B2B vía:
+     1. Formulario Manual (Dropdown)
+     2. IA Texto Libre (Gemini)
+     3. IA Archivo PDF/Excel (Gemini)
+    """
     solicitud = get_object_or_404(Solicitud, pk=pk)
+    resultado_ia = None
 
     if request.method == 'POST':
-        form = ItemSolicitudForm(request.POST)
-        if form.is_valid():
-            item = form.save(commit=False)
-            item.solicitud = solicitud
-            item.save()
-            messages.success(
-                request,
-                f'Producto {item.producto.codigo} agregado a la solicitud.'
-            )
-            return redirect('solicitudes:agregar_item', pk=pk)
-    else:
-        form = ItemSolicitudForm()
+        # --- VIA 1: INGRESO MANUAL ---
+        if 'btn_manual' in request.POST:
+            form = ItemSolicitudForm(request.POST, solicitud=solicitud)
+            if form.is_valid():
+                item = form.save(commit=False)
+                solicitud.agregar_o_sumar_item(item.producto, item.cantidad_solicitada)
+                messages.success(request, f'Producto {item.producto.codigo} agregado correctamente.')
+                return redirect('solicitudes:agregar_item', pk=pk)
+        
+        # --- VIA 2: IA TEXTO LIBRE ---
+        elif 'btn_ia_texto' in request.POST:
+            texto = request.POST.get('texto_pedido', '').strip()
+            if texto:
+                empresa = solicitud.cliente.perfil.empresa if hasattr(solicitud.cliente, 'perfil') else None
+                resultado_ia = procesar_pedido_con_gemini(texto_libre=texto, empresa=empresa)
+                if resultado_ia.get('exito'):
+                    _crear_items_desde_ia(request, solicitud, resultado_ia['items'])
+                    return redirect('solicitudes:agregar_item', pk=pk)
+                else:
+                    messages.error(request, f"Error IA: {resultado_ia.get('error')}")
+
+        # --- VIA 3: IA ARCHIVO (PDF/IMAGEN) ---
+        elif 'btn_ia_archivo' in request.POST:
+            archivo = request.FILES.get('archivo_pedido')
+            if archivo:
+                # Guardar temporalmente para pasarlo a Gemini File API
+                import tempfile
+                import os
+                ext = os.path.splitext(archivo.name)[1]
+                tmp_fd, tmp_path = tempfile.mkstemp(suffix=ext)
+                with open(tmp_fd, 'wb') as f:
+                    for chunk in archivo.chunks():
+                        f.write(chunk)
+                
+                try:
+                    empresa = solicitud.cliente.perfil.empresa if hasattr(solicitud.cliente, 'perfil') else None
+                    resultado_ia = procesar_pedido_con_gemini(archivo_path=tmp_path, empresa=empresa)
+                    if resultado_ia.get('exito'):
+                        _crear_items_desde_ia(request, solicitud, resultado_ia['items'])
+                        return redirect('solicitudes:agregar_item', pk=pk)
+                    else:
+                        messages.error(request, f"Error IA: {resultado_ia.get('error')}")
+                finally:
+                    os.unlink(tmp_path)
+
+    # Si no es POST o hubo error, renderizamos
+    form_manual = ItemSolicitudForm(solicitud=solicitud)
+    items_actuales = solicitud.items.select_related('producto')
 
     return render(request, 'solicitudes/agregar_item.html', {
         'solicitud': solicitud,
-        'items': solicitud.items.select_related('producto'),
-        'form': form,
-        'titulo': f'Solicitud #{solicitud.pk} — Agregar Productos',
+        'items': items_actuales,
+        'form': form_manual,
+        'resultado_ia': resultado_ia,
+        'titulo': f'Solicitud #{solicitud.pk} — Ingreso de Productos',
     })
 
+def _crear_items_desde_ia(request, solicitud, items_ia):
+    """Función DRY auxiliar para parsear y guardar el resultado de Gemini"""
+    creados = 0
+    for dict_item in items_ia:
+        if dict_item['encontrado'] and dict_item['cantidad'] > 0:
+            prod = dict_item['producto']
+            cant = dict_item['cantidad']
+            # DRY: Buscar si ya existe la línea y sumar, o crear
+            solicitud.agregar_o_sumar_item(prod, cant)
+            creados += 1
+            
+    if creados > 0:
+        messages.success(request, f'🤖 IA extrajo y agregó {creados} líneas de productos a tu Solicitud.')
+    else:
+        messages.warning(request, '⚠️ La IA no reconoció ningún SKU válido en el catálogo. Intenta ingresarlo manual.')
 
-@login_required
+
+@operador_required
 def autorizar_solicitud(request, pk):
     """Autoriza una solicitud y lanza el motor FEFO/FIFO."""
     solicitud = get_object_or_404(Solicitud, pk=pk)
@@ -123,70 +209,4 @@ def detalle_solicitud(request, pk):
     })
 
 
-@login_required
-def pedido_ia(request):
-    """
-    Vista de pedido por texto libre con Gemini IA.
-    El cliente describe lo que necesita en lenguaje natural.
-    Gemini extrae los ítems y se crea la Solicitud automáticamente.
-    """
-    resultado = None
 
-    if request.method == 'POST':
-        texto = request.POST.get('texto_pedido', '').strip()
-        fecha_requerida = request.POST.get('fecha_requerida', '')
-        referencia = request.POST.get('referencia_cliente', '')
-
-        if not texto:
-            messages.error(request, 'Por favor escribe tu pedido antes de enviar.')
-        else:
-            # Llamar al servicio de IA
-            resultado = procesar_pedido_con_gemini(texto)
-
-            if resultado['exito'] and resultado['items']:
-                # Si el usuario confirmó la vista previa, crear la Solicitud
-                if request.POST.get('confirmar') == '1':
-                    from datetime import date
-                    try:
-                        fecha = date.fromisoformat(fecha_requerida) if fecha_requerida else date.today()
-                    except ValueError:
-                        fecha = date.today()
-
-                    solicitud = Solicitud.objects.create(
-                        cliente=request.user,
-                        fecha_requerida=fecha,
-                        referencia_cliente=referencia,
-                        observaciones=f'[IA] Texto original: {texto[:300]}',
-                    )
-
-                    items_creados = 0
-                    for item in resultado['items']:
-                        if item['encontrado'] and item['cantidad'] > 0:
-                            ItemSolicitud.objects.create(
-                                solicitud=solicitud,
-                                producto=item['producto'],
-                                cantidad_solicitada=item['cantidad'],
-                            )
-                            items_creados += 1
-
-                    if items_creados > 0:
-                        messages.success(
-                            request,
-                            f'✅ Solicitud #{solicitud.pk} creada por IA con {items_creados} ítem(s).'
-                        )
-                        return redirect('solicitudes:detalle', pk=solicitud.pk)
-                    else:
-                        solicitud.delete()
-                        messages.warning(
-                            request,
-                            'Gemini no encontró ningún SKU reconocido en tu pedido. '
-                            'Intenta ser más específico o usa el formulario manual.'
-                        )
-                        resultado = None
-            elif not resultado['exito']:
-                messages.error(request, f'Error al procesar con IA: {resultado["error"]}')
-
-    return render(request, 'solicitudes/pedido_ia.html', {
-        'titulo': '🤖 Pedido por Inteligencia Artificial',
-        'resultado': resultado,
-    })

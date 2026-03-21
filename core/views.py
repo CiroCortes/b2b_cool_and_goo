@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, F, ExpressionWrapper, fields, Avg
+from django.db.models import Count, F, ExpressionWrapper, fields, Avg, Case, When, Value
 from django.utils import timezone
 
 from solicitudes.models import Solicitud
@@ -27,11 +27,21 @@ def dashboard_principal(request):
         context['pedidos_despachados'] = mis_solicitudes.filter(estado=Solicitud.Estado.DESPACHADA).count()
         context['ultimas_solicitudes'] = mis_solicitudes.order_by('-fecha_solicitud')[:5]
         context['template_name'] = 'core/dashboard_cliente.html'
+        mis_solicitudes = Solicitud.objects.para_usuario(request.user)
+        # Estadísticas Cliente
+        total_aprobadas = mis_solicitudes.filter(estado=Solicitud.Estado.AUTORIZADA).count()
+        en_transito = mis_solicitudes.filter(estado__in=[Solicitud.Estado.EN_PICKING, Solicitud.Estado.DESPACHADA]).count()
+
+        return render(request, 'core/dashboard_cliente.html', {
+            'solicitudes': mis_solicitudes.order_by('-fecha_solicitud')[:5],
+            'total_aprobadas': total_aprobadas,
+            'en_transito': en_transito,
+        })
     else:
         # ---------------------------------------------------------
         # DASHBOARD ADMIN / OPERARIO (KPIs)
         # ---------------------------------------------------------
-        todas_solicitudes = Solicitud.objects.all()
+        todas_solicitudes = Solicitud.objects.para_usuario(request.user)
 
         # KPI 1: Volúmenes por estado
         pendientes = todas_solicitudes.filter(estado=Solicitud.Estado.PENDIENTE_BACKLOG).count()
@@ -66,6 +76,18 @@ def dashboard_principal(request):
         context['despachadas'] = despachadas
         context['lead_time_promedio'] = lead_time_promedio
         context['ultimos_movimientos'] = ultimos_movimientos
+        # Para el operador, mostramos las que requieren acción inmediata y las que están en curso
+        context['pendientes_list'] = todas_solicitudes.filter(
+            estado__in=[Solicitud.Estado.PENDIENTE_BACKLOG, Solicitud.Estado.AUTORIZADA, Solicitud.Estado.EN_PICKING]
+        ).order_by(
+            Case(
+                When(estado=Solicitud.Estado.PENDIENTE_BACKLOG, then=Value(0)),
+                When(estado=Solicitud.Estado.AUTORIZADA, then=Value(1)),
+                When(estado=Solicitud.Estado.EN_PICKING, then=Value(2)),
+                default=Value(3)
+            ),
+            '-fecha_solicitud'
+        )[:8]
         context['template_name'] = 'core/dashboard_admin.html'
 
     # Renderizamos el template que corresponda según el rol

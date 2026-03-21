@@ -71,60 +71,16 @@ def confirmar_despacho(request, pk):
              return redirect('despacho:ejecutar', pk=pk)
 
         try:
-            with transaction.atomic():
-                items = solicitud.items.select_related('lote_asignado')
-                
-                # Revisamos si todos los items ya fueron despachados para cerrar la solicitud
-                todos_despachados = True
-                
-                for item in items:
-                    if item.lote_asignado and item.cantidad_solicitada > 0:
-                        lote = item.lote_asignado
-                        
-                        # Prevenir sobre-descuentos si reiniciamos un picking fallido
-                        if item.cantidad_despachada >= item.cantidad_solicitada:
-                            continue
-
-                        # Descontar stock del lote físico
-                        if lote.cantidad_disponible >= item.cantidad_solicitada:
-                            lote.cantidad_disponible -= item.cantidad_solicitada
-                            if lote.cantidad_disponible == 0:
-                                lote.estado = 'AGOTADO'
-                            lote.save()
-
-                            # Marcarlo como físicamente extraido en el item de la Solicitud
-                            item.cantidad_despachada = item.cantidad_solicitada
-                            item.save(update_fields=['cantidad_despachada'])
-
-                            # Transacción de Trazabilidad Logística (Salida)
-                            MovimientoStock.objects.create(
-                                lote=lote,
-                                tipo=MovimientoStock.TipoMovimiento.SALIDA,
-                                cantidad=-item.cantidad_solicitada,
-                                referencia=f'Despacho Solicitud #{solicitud.pk}',
-                                realizado_por=request.user
-                            )
-                        else:
-                            todos_despachados = False
-                            messages.error(
-                                request, 
-                                f'Error Crítico: El lote {lote.numero_lote} no tiene suficiente stock.'
-                            )
-                    else:
-                        if item.cantidad_despachada < item.cantidad_solicitada:
-                            todos_despachados = False
-
-                if todos_despachados:
-                    # Cerrar el ciclo logístico
-                    solicitud.estado = Solicitud.Estado.DESPACHADA
-                    solicitud.despachado_por = request.user
-                    solicitud.fecha_despacho = timezone.now()
-                    solicitud.save()
-                    messages.success(request, f'¡Picking completado! Solicitud #{pk} procesada y stock descontado.')
-                    return redirect('despacho:cola')
-                else:
-                    return redirect('despacho:ejecutar', pk=pk)
+            from despacho.services import procesar_despacho_fisico
+            cerrada = procesar_despacho_fisico(solicitud, request.user)
             
+            if cerrada:
+                messages.success(request, f'¡Picking completado! Solicitud #{pk} procesada y stock descontado.')
+                return redirect('despacho:cola')
+            else:
+                messages.warning(request, 'No se pudo finalizar: Hay ítems sin stock asignado o pendientes de pickear.')
+                return redirect('despacho:ejecutar', pk=pk)
+                
         except Exception as e:
             messages.error(request, f'Error del sistema al procesar: {str(e)}')
             return redirect('despacho:ejecutar', pk=pk)

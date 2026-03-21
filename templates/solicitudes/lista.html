@@ -11,6 +11,44 @@
     </a>
 </div>
 
+{% if empresas %}
+<div class="bg-gray-50 border border-gray-200 p-4 rounded-lg mb-6 flex flex-col md:flex-row items-center gap-4">
+    <div class="flex-grow">
+        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Filtrar por Cliente B2B</label>
+        <form method="get" id="filterForm" class="flex items-center gap-4">
+            <select name="empresa" class="w-full md:w-64 p-2 border rounded font-bold text-secondary text-sm" onchange="this.form.submit()">
+                <option value="">--- Todos los Clientes ---</option>
+                {% for emp in empresas %}
+                    <option value="{{ emp.pk }}" {% if request.GET.empresa == emp.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ emp.nombre_fantasia|default:emp.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+            
+            <input type="hidden" name="estado" value="{{ request.GET.estado|default:'' }}">
+        </form>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a href="?empresa={{ request.GET.empresa|default:'' }}" 
+           class="px-3 py-1 rounded-full text-xs font-bold {% if not request.GET.estado %}bg-secondary text-white shadow{% else %}bg-white border text-gray-500 hover:bg-gray-100{% endif %}">
+            Todos
+        </a>
+        <a href="?empresa={{ request.GET.empresa|default:'' }}&estado=PENDIENTE_BACKLOG" 
+           class="px-3 py-1 rounded-full text-xs font-bold {% if request.GET.estado == 'PENDIENTE_BACKLOG' %}bg-yellow-500 text-white shadow{% else %}bg-white border text-gray-500 hover:bg-gray-100{% endif %}">
+            Pendientes
+        </a>
+        <a href="?empresa={{ request.GET.empresa|default:'' }}&estado=AUTORIZADA" 
+           class="px-3 py-1 rounded-full text-xs font-bold {% if request.GET.estado == 'AUTORIZADA' %}bg-blue-600 text-white shadow{% else %}bg-white border text-gray-500 hover:bg-gray-100{% endif %}">
+            Autorizadas
+        </a>
+        <a href="?empresa={{ request.GET.empresa|default:'' }}&estado=EN_PICKING" 
+           class="px-3 py-1 rounded-full text-xs font-bold {% if request.GET.estado == 'EN_PICKING' %}bg-orange-500 text-white shadow{% else %}bg-white border text-gray-500 hover:bg-gray-100{% endif %}">
+            En Picking
+        </a>
+    </div>
+</div>
+{% endif %}
+
 <!-- Tabla de Solicitudes -->
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <table class="min-w-full text-sm">
