@@ -1,0 +1,69 @@
+========================================================================
+       MANUAL DE PRUEBAS - PORTAL LOGÍSTICO COOL & GO B2B (MVP)
+========================================================================
+
+Este documento es una guía rápida para socios y testers del sistema
+Cool & Go B2B. Por favor, considere que este sistema está en fase 
+MVP (Producto Mínimo Viable) y su objetivo es validar el flujo logístico.
+
+------------------------------------------------------------------------
+1. ENLACE DE ACCESO (PRODUCCIÓN)
+------------------------------------------------------------------------
+URL: https://[TU-APP-EN-RENDER].onrender.com/
+(Nota: Reemplaza con la URL que Render te proporcione al terminar el deploy).
+
+------------------------------------------------------------------------
+2. CUENTAS DE PRUEBA (MODO DEMO)
+------------------------------------------------------------------------
+
+A. ADMINISTRADOR / OPERADOR WMS (Acceso Total)
+   - Usuario: admin
+   - Clave: pass123
+   - Uso: Gestión de todas las empresas, inventario total y configuración.
+
+B. OPERADOR WMS 1 (Acceso Operativo)
+   - Usuario: operador1
+   - Clave: pass123
+   - Uso: Creación de pedidos para cualquier empresa, autorización y control.
+
+C. PERSONAL DE BODEGA / PICKER (Acceso Restringido)
+   - Usuario: operador2
+   - Clave: pass123
+   - Uso: Solo ve Inventario y Cola de Picking. No puede crear ni borrar pedidos.
+   (Si intenta entrar a zonas prohibidas, verá la nueva página "ZONA RESTRINGIDA").
+
+------------------------------------------------------------------------
+3. FLUJOS PRINCIPALES PARA TESTEAR
+------------------------------------------------------------------------
+
+FLUJO 1: CREACIÓN DE SOLICITUD HÍBRIDA (IA + MANUAL)
+1. Entra como 'operador1'.
+2. Ve a "Nueva Solicitud".
+3. Selecciona una empresa (ej. ALTA FRUTA) y el cliente.
+4. En el Paso 2, prueba cargar productos de 3 formas:
+   - Manual: Seleccionando del dropdown.
+   - Texto IA: Escribe "necesito 5 manzanas y 10 peras" en el cuadro de chat.
+   - Archivo IA: Sube un PDF o Excel de un pedido real (Gemini lo procesará).
+
+FLUJO 2: AUTORIZACIÓN Y PICKING
+1. Una vez creada la solicitud, búscala en el "Backlog" (Inicio).
+2. Haz clic en "Autorizar" (Solo operadores pueden).
+3. Entra como 'operador2' (Bodega).
+4. Verás que en el inicio aparece el pedido listo para "Picking".
+5. Ejecuta el picking y confirma la salida del inventario.
+
+FLUJO 3: MAESTRO DE INVENTARIO
+1. Ve a la sección "Maestro Inventario".
+2. Verás el stock consolidado de todas las empresas.
+3. Puedes hacer clic en el botón de FEFO (Lupa) para ver el detalle de lotes.
+
+------------------------------------------------------------------------
+4. CONSIDERACIONES DEL MVP
+------------------------------------------------------------------------
+- El sistema utiliza Inteligencia Artificial (Google Gemini) para el 
+  procesamiento de pedidos.
+- La seguridad está basada en roles estrictos para evitar errores operativos.
+- Los datos se cargan desde el archivo initial_data.json en el deploy inicial.
+
+Cualquier bug detectado, favor reportarlo para mejora continua.
+========================================================================
