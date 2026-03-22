@@ -9,7 +9,10 @@
     <div>
         <h1 class="text-2xl font-bold text-secondary">{{ titulo }}</h1>
         <p class="text-sm text-gray-500 mt-1">
-            Cliente: <strong>{{ solicitud.cliente.get_full_name|default:solicitud.cliente.username }}</strong>
+            Empresa: <strong>{{ solicitud.empresa.nombre_fantasia|default:solicitud.empresa.nombre }}</strong>
+            {% if solicitud.cliente %}
+                &nbsp;|&nbsp; Solicitado por: {{ solicitud.cliente.get_full_name|default:solicitud.cliente.username }}
+            {% endif %}
             &nbsp;|&nbsp; Referencia: {{ solicitud.referencia_cliente|default:"—" }}
         </p>
     </div>

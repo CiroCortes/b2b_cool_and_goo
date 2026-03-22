@@ -21,3 +21,7 @@ urlpatterns = [
     # Dashboard Principal B2B (Cliente / Admin)
     path('', views.dashboard_principal, name='home'),
 ]
+
+# Manejo de Errores Personalizado
+handler403 = 'core.views.custom_403_view'
+

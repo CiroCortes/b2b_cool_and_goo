@@ -11,16 +11,19 @@
             <h1 class="text-3xl font-bold text-secondary">Centro de Operaciones HUB</h1>
             <p class="text-gray-500 mt-2">Monitoreo de Backlog, Lead Times y KPIs logísticos del clúster.</p>
         </div>
+        {% if not user.perfil.es_bodega %}
         <div class="text-right">
             <p class="text-sm text-gray-500">Métrica Principal</p>
             <p class="text-2xl font-black text-primary">{{ lead_time_promedio }} Horas</p>
             <p class="text-xs uppercase tracking-wide text-gray-400 font-bold">AVG Lead Time (IA → Autorización)</p>
         </div>
+        {% endif %}
     </div>
 
     <!-- KPIs Row (4 cols) -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         
+        {% if not user.perfil.es_bodega %}
         <!-- Backlog -->
         <div class="bg-white rounded-xl shadow p-5 border-t-4 border-gray-300">
             <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">En Backlog</p>
@@ -29,6 +32,7 @@
                 <span class="text-xs text-gray-400">órdenes</span>
             </div>
         </div>
+        {% endif %}
 
         <!-- Autorizadas (FEFO Triggered) -->
         <div class="bg-white rounded-xl shadow p-5 border-t-4 border-blue-400">
@@ -69,6 +73,7 @@
             <!-- Simple CSS Data Funnel -->
             <div class="space-y-4">
                 
+                {% if not user.perfil.es_bodega %}
                 <!-- Step 1 -->
                 <div>
                     <div class="flex justify-between text-sm mb-1">
@@ -79,6 +84,7 @@
                         <div class="bg-gray-400 h-4 rounded-full" style="width: {% if pendientes %}100%{% else %}0%{% endif %}"></div>
                     </div>
                 </div>
+                {% endif %}
 
                 <!-- Step 2 -->
                 <div>
@@ -124,7 +130,9 @@
                 <h2 class="text-lg font-bold text-secondary flex items-center gap-2">
                     <span>⚡</span> Seguimiento de Operaciones Activas
                 </h2>
+                {% if not user.perfil.es_bodega %}
                 <a href="{% url 'solicitudes:lista' %}" class="text-xs font-bold text-primary hover:underline">Ver Backlog Completo &rarr;</a>
+                {% endif %}
             </div>
             <div class="flex-grow">
                 <table class="min-w-full text-sm text-left">
@@ -141,7 +149,7 @@
                         {% for s in pendientes_list %}
                         <tr class="hover:bg-gray-50 bg-white">
                             <td class="px-6 py-3 font-mono font-bold text-primary">#{{ s.pk }}</td>
-                            <td class="px-6 py-3 font-medium text-secondary">{{ s.cliente.perfil.empresa.nombre_fantasia|default:s.cliente.perfil.empresa.nombre }}</td>
+                            <td class="px-6 py-3 font-medium text-secondary">{{ s.empresa.nombre_fantasia|default:s.empresa.nombre }}</td>
                             <td class="px-6 py-3">
                                 {% if s.estado == 'PENDIENTE_BACKLOG' %}
                                     <span class="bg-yellow-100 text-yellow-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Pendiente</span>

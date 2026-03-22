@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from usuarios.decorators import operador_required
+from django.core.exceptions import PermissionDenied
+from usuarios.decorators import operador_required, bodega_required
 from django.contrib import messages
 from django.utils import timezone
 from django.db import models
@@ -15,6 +16,8 @@ from usuarios.models import Empresa
 @login_required
 def lista_solicitudes(request):
     """Vista principal del backlog de solicitudes."""
+    if hasattr(request.user, 'perfil') and request.user.perfil.es_bodega:
+        raise PermissionDenied("El personal de bodega no está autorizado para ver el backlog de solicitudes.")
     solicitudes = Solicitud.objects.para_usuario(request.user)
     empresas = None
     empresa_id = request.GET.get('empresa')
@@ -23,7 +26,7 @@ def lista_solicitudes(request):
     if not (hasattr(request.user, 'perfil') and request.user.perfil.es_cliente):
         empresas = Empresa.objects.filter(activa=True)
         if empresa_id:
-            solicitudes = solicitudes.filter(cliente__perfil__empresa_id=empresa_id)
+            solicitudes = solicitudes.filter(empresa_id=empresa_id)
         
         estado_filtro = request.GET.get('estado')
         if estado_filtro:
@@ -47,17 +50,23 @@ def lista_solicitudes(request):
     return render(request, 'solicitudes/lista.html', context)
 
 
+# Solo clientes y operadores pueden crear. Bodega NO puede crear.
 @login_required
 def nueva_solicitud(request):
+    if hasattr(request.user, 'perfil') and request.user.perfil.es_bodega:
+        raise PermissionDenied("El personal de bodega no está autorizado para crear solicitudes.")
     """Crea una nueva solicitud B2B."""
     if request.method == 'POST':
         form = SolicitudForm(request.POST, user=request.user)
         if form.is_valid():
             solicitud = form.save(commit=False)
-            # Si el usuario es cliente, se auto-asigna. Si no, viene del form.
+            # Lógica de asignación Empresa / Cliente
             if hasattr(request.user, 'perfil') and request.user.perfil.es_cliente:
                 solicitud.cliente = request.user
+                solicitud.empresa = request.user.perfil.empresa
             else:
+                # Operador/Admin eligen empresa explícitamente
+                solicitud.empresa = form.cleaned_data.get('empresa')
                 solicitud.cliente = form.cleaned_data.get('cliente')
             
             solicitud.save()
@@ -72,8 +81,11 @@ def nueva_solicitud(request):
     })
 
 
+# Lo mismo para agregar ítems
 @login_required
 def agregar_item(request, pk):
+    if hasattr(request.user, 'perfil') and request.user.perfil.es_bodega:
+        raise PermissionDenied("El personal de bodega no está autorizado para modificar solicitudes.")
     """
     Paso 2 de Creación Híbrida.
     Agrega productos a una solicitud B2B vía:
@@ -98,7 +110,7 @@ def agregar_item(request, pk):
         elif 'btn_ia_texto' in request.POST:
             texto = request.POST.get('texto_pedido', '').strip()
             if texto:
-                empresa = solicitud.cliente.perfil.empresa if hasattr(solicitud.cliente, 'perfil') else None
+                empresa = solicitud.empresa
                 resultado_ia = procesar_pedido_con_gemini(texto_libre=texto, empresa=empresa)
                 if resultado_ia.get('exito'):
                     _crear_items_desde_ia(request, solicitud, resultado_ia['items'])
@@ -120,7 +132,7 @@ def agregar_item(request, pk):
                         f.write(chunk)
                 
                 try:
-                    empresa = solicitud.cliente.perfil.empresa if hasattr(solicitud.cliente, 'perfil') else None
+                    empresa = solicitud.empresa
                     resultado_ia = procesar_pedido_con_gemini(archivo_path=tmp_path, empresa=empresa)
                     if resultado_ia.get('exito'):
                         _crear_items_desde_ia(request, solicitud, resultado_ia['items'])

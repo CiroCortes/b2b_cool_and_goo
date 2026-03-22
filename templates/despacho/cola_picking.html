@@ -39,8 +39,8 @@
                         {% endif %}
                     </td>
                     <td class="px-6 py-4">
-                        <div class="font-bold text-secondary">#{{ sol.pk }} - {{ sol.cliente.username }}</div>
-                        <div class="text-xs text-gray-500">Ref: {{ sol.referencia_cliente|default:"N/A" }}</div>
+                        <div class="font-bold text-secondary">#{{ sol.pk }} - {{ sol.empresa.nombre_fantasia|default:sol.empresa.nombre }}</div>
+                        <div class="text-xs text-gray-500">Ref: {{ sol.referencia_cliente|default:"N/A" }}{% if sol.cliente %} | Solicita: {{ sol.cliente.username }}{% endif %}</div>
                     </td>
                     <td class="px-6 py-4 text-center">
                         <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded font-bold text-xs">{{ sol.items.count }} Líneas</span>

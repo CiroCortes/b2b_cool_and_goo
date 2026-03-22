@@ -82,6 +82,7 @@ class Perfil(models.Model):
     class Rol(models.TextChoices):
         ADMIN = 'ADMIN', 'Administrador'
         OPERADOR = 'OPERADOR', 'Operador WMS'
+        BODEGA = 'BODEGA', 'Personal de Bodega / Picking'
         CLIENTE = 'CLIENTE', 'Cliente B2B'
 
     user = models.OneToOneField(
@@ -129,10 +130,14 @@ class Perfil(models.Model):
         return self.rol == self.Rol.OPERADOR
 
     @property
+    def es_bodega(self):
+        return self.rol == self.Rol.BODEGA
+
+    @property
     def es_cliente(self):
         return self.rol == self.Rol.CLIENTE
 
     @property
     def puede_ver_todo(self):
-        """ADMIN y OPERADOR tienen visión global del sistema."""
-        return self.rol in [self.Rol.ADMIN, self.Rol.OPERADOR]
+        """ADMIN, OPERADOR y BODEGA tienen visión global del sistema."""
+        return self.rol in [self.Rol.ADMIN, self.Rol.OPERADOR, self.Rol.BODEGA]

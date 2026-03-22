@@ -37,6 +37,19 @@ def dashboard_principal(request):
             'total_aprobadas': total_aprobadas,
             'en_transito': en_transito,
         })
+    elif perfil and perfil.es_bodega:
+        # ---------------------------------------------------------
+        # DASHBOARD BODEGA / PICKER
+        # ---------------------------------------------------------
+        todas_solicitudes = Solicitud.objects.para_usuario(request.user)
+        context['autorizadas'] = todas_solicitudes.filter(estado=Solicitud.Estado.AUTORIZADA).count()
+        context['en_picking'] = todas_solicitudes.filter(estado=Solicitud.Estado.EN_PICKING).count()
+        context['despachadas'] = todas_solicitudes.filter(estado=Solicitud.Estado.DESPACHADA).count()
+        context['ultimos_movimientos'] = MovimientoStock.objects.select_related('lote__producto').order_by('-fecha')[:8]
+        context['pendientes_list'] = todas_solicitudes.filter(
+            estado__in=[Solicitud.Estado.AUTORIZADA, Solicitud.Estado.EN_PICKING]
+        ).order_by('-fecha_solicitud')[:8]
+        context['template_name'] = 'core/dashboard_admin.html'
     else:
         # ---------------------------------------------------------
         # DASHBOARD ADMIN / OPERARIO (KPIs)
@@ -92,3 +105,8 @@ def dashboard_principal(request):
 
     # Renderizamos el template que corresponda según el rol
     return render(request, context['template_name'], context)
+
+
+def custom_403_view(request, exception=None):
+    """Vista personalizada para manejar el error 403 (Acceso Denegado)."""
+    return render(request, '403.html', status=403)

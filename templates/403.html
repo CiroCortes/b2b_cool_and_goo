@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Acceso Restringido - Cool & Go{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto mt-10 md:mt-20 text-center px-4">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-16 border border-gray-100 overflow-hidden relative">
+        <!-- Background Accent -->
+        <div class="absolute top-0 right-0 w-32 h-32 bg-accent opacity-10 rounded-bl-full"></div>
+        
+        <!-- Error Icon -->
+        <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-red-50 mb-8 border-4 border-white shadow-lg">
+            <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0-8V7m0 8h.01M4.93 4.93l14.14 14.14M2 12c0 5.523 4.477 10 10 10s10-4.477 10-10S17.523 2 12 2 2 6.477 2 12z"></path>
+            </svg>
+        </div>
+
+        <h1 class="text-3xl md:text-4xl font-black text-secondary mb-4 tracking-tight uppercase">Zona Restringida</h1>
+        <p class="text-gray-500 text-base md:text-lg mb-10 max-w-xl mx-auto leading-relaxed">
+            Hola <strong class="text-primary">{{ user.first_name|default:user.username }}</strong>. 
+            Tu perfil actual (<span class="bg-gray-100 px-2 py-0.5 rounded font-bold text-gray-700">{{ user.perfil.get_rol_display }}</span>) 
+            no tiene los permisos suficientes para realizar esta acción o ver este contenido.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg mx-auto">
+            <a href="/" class="flex items-center justify-center gap-2 bg-primary text-white px-8 py-4 rounded-xl font-bold hover:scale-[1.02] transition-all shadow-lg shadow-brand-blue/20">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                Volver al Home
+            </a>
+            
+            {% if user.perfil.es_bodega %}
+            <a href="{% url 'despacho:cola' %}" class="flex items-center justify-center gap-2 bg-accent text-white px-8 py-4 rounded-xl font-bold hover:scale-[1.02] transition-all shadow-lg shadow-brand-yellow/20">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                Área de Picking
+            </a>
+            {% elif user.perfil.es_cliente %}
+            <a href="{% url 'solicitudes:lista' %}" class="flex items-center justify-center gap-2 bg-accent text-white px-8 py-4 rounded-xl font-bold hover:scale-[1.02] transition-all shadow-lg shadow-brand-yellow/20">
+                📋 Mis Pedidos
+            </a>
+            {% endif %}
+        </div>
+
+        <p class="mt-12 text-gray-400 text-xs font-medium">Si crees que esto es un error, contacta al administrador del sistema.</p>
+    </div>
+</div>
+{% endblock %}

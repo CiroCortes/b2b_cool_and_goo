@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from usuarios.decorators import operador_required
+from usuarios.decorators import operador_required, bodega_required
 from django.db import models
 from django.db.models import Sum
 from .models import Producto, Lote
@@ -25,7 +25,7 @@ def maestro_inventario(request):
         empresa_seleccionada = request.user.perfil.empresa
         productos = productos.filter(empresa=empresa_seleccionada)
     else:
-        # El Operador/Admin ve todo, pero le pedimos elegir empresa (UX solicitada)
+        # El Operador/Admin/Bodega ve todo, pero le pedimos elegir empresa (UX solicitada)
         empresas = Empresa.objects.filter(activa=True)
         empresa_id = request.GET.get('empresa')
         if empresa_id:
@@ -47,7 +47,7 @@ def maestro_inventario(request):
     })
 
 
-@operador_required
+@bodega_required
 def detalle_fefo(request, pk):
     """
     Vista Detalle FEFO: Desglosa un SKU específico mostrando

@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from usuarios.decorators import bodega_required
 from django.contrib import messages
 from django.utils import timezone
 from django.db import transaction
@@ -8,7 +9,7 @@ from solicitudes.models import Solicitud
 from inventario.models import MovimientoStock
 
 
-@login_required
+@bodega_required
 def cola_picking(request):
     """
     Lista de todas las solicitudes autorizadas que están listas
@@ -23,7 +24,7 @@ def cola_picking(request):
     })
 
 
-@login_required
+@bodega_required
 def ejecutar_picking(request, pk):
     """
     Vista detallada para el operario de piso.
@@ -52,7 +53,7 @@ def ejecutar_picking(request, pk):
     })
 
 
-@login_required
+@bodega_required
 def confirmar_despacho(request, pk):
     """
     Procesa la confirmación física del picking.

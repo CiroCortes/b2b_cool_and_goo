@@ -28,6 +28,19 @@ def operador_required(view_func):
     return user_passes_test(check_role, login_url=settings.LOGIN_URL)(view_func)
 
 
+def bodega_required(view_func):
+    """Permite el acceso a Bodega, Operadores y Admins."""
+    def check_role(user):
+        if not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        if hasattr(user, 'perfil') and (user.perfil.es_bodega or user.perfil.es_operador or user.perfil.es_admin):
+            return True
+        raise PermissionDenied("Se requiere nivel de Bodega o superior.")
+    return user_passes_test(check_role, login_url=settings.LOGIN_URL)(view_func)
+
+
 def admin_wms_required(view_func):
     """Permite el acceso ÚNICAMENTE a Admins (Superusuarios del sistema)."""
     def check_role(user):

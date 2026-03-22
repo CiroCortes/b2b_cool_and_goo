@@ -30,9 +30,12 @@
     <!-- Datos Cliente / Operador -->
     <div class="grid grid-cols-2 gap-8 mb-8 bg-gray-50 p-6 rounded border">
         <div>
-            <p class="text-xs uppercase font-bold text-gray-500 mb-1">Entregar a:</p>
-            <p class="font-bold text-xl text-gray-900">{{ solicitud.cliente.first_name }} {{ solicitud.cliente.last_name }} ({{ solicitud.cliente.username }})</p>
-            <p class="text-sm text-gray-600 mt-1">Ref Cliente: {{ solicitud.referencia_cliente|default:"Ninguna" }}</p>
+            <p class="text-xs uppercase font-bold text-gray-500 mb-1">Empresa Logística:</p>
+            <p class="font-bold text-xl text-gray-900">{{ solicitud.empresa.nombre_fantasia|default:solicitud.empresa.nombre }}</p>
+            <p class="text-sm text-gray-600 mt-1">
+                Ref Cliente: {{ solicitud.referencia_cliente|default:"Ninguna" }}
+                {% if solicitud.cliente %} | Solicita: {{ solicitud.cliente.username }}{% endif %}
+            </p>
             <p class="text-sm text-red-600 font-bold mt-1">Requerido para: {{ solicitud.fecha_requerida|date:"d M, Y" }}</p>
         </div>
         <div>

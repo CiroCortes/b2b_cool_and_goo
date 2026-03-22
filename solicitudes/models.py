@@ -28,11 +28,20 @@ class Solicitud(models.Model):
         ALTA = 'ALTA', 'Alta'
         URGENTE = 'URGENTE', 'Urgente'
 
-    # Quién genera la solicitud
+    # Quién genera la solicitud (opcional si la crea el operador para una empresa sin usuario)
     cliente = models.ForeignKey(
-        User, on_delete=models.PROTECT,
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
         related_name='solicitudes',
-        verbose_name='Cliente B2B'
+        verbose_name='Usuario Cliente B2B'
+    )
+
+    # Empresa dueña de la solicitud (Obligatorio para aislamiento B2B)
+    empresa = models.ForeignKey(
+        'usuarios.Empresa', on_delete=models.PROTECT,
+        related_name='solicitudes',
+        verbose_name='Empresa Propietaria',
+        null=True  # Temporal para migración, luego será obligatorio
     )
 
     # Control de estado y prioridad
