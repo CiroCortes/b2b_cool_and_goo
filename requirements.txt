@@ -1,0 +1,41 @@
+# Django & Core
+Django==6.0.3
+django-environ==0.13.0
+django-tailwind==4.4.2
+psycopg2-binary==2.9.11
+
+# Production / Render
+gunicorn
+whitenoise
+dj-database-url
+
+# Gemini & AI Processing
+google-generativeai==0.8.6
+google-ai-generativelanguage==0.6.15
+google-api-core==2.30.0
+google-api-python-client==2.192.0
+google-auth==2.49.1
+google-auth-httplib2==0.3.0
+googleapis-common-protos==1.73.0
+
+# Data & Documents
+numpy==2.4.3
+openpyxl==3.1.5
+pandas==3.0.1
+pypdf==6.9.0
+
+# Utilities
+cryptography==46.0.5
+pydantic==2.12.5
+requests==2.32.5
+PyYAML==6.0.3
+Jinja2==3.1.6
+python-slugify==8.0.4
+python-dateutil==2.9.0.post0
+tzdata==2025.3
+uritemplate==4.2.0
+urllib3==2.6.3
+rich==14.3.3
+tqdm==4.67.3
+sqlparse==0.5.5
+typing_extensions==4.15.0
