@@ -10,3 +10,6 @@ python manage.py collectstatic --no-input
 
 # Run migrations
 python manage.py migrate
+
+# Cargar datos iniciales (SOLO PARA EL PRIMER DESPLIEGUE EN FREE TIER)
+python manage.py loaddata initial_data.json
