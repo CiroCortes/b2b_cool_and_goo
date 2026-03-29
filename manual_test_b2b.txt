@@ -18,7 +18,7 @@ URL: https://[TU-APP-EN-RENDER].onrender.com/
 
 A. ADMINISTRADOR / OPERADOR WMS (Acceso Total)
    - Usuario: admin
-   - Clave: pass123
+   - Clave: admin123
    - Uso: Gestión de todas las empresas, inventario total y configuración.
 
 B. OPERADOR WMS 1 (Acceso Operativo)

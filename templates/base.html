@@ -64,16 +64,16 @@
                 📊 Dashboard
             </a>
 
-            <!-- Módulo CLIENTE (Solo para Clientes o Admins/Operadores, no Bodega) -->
+            <!-- Módulo CLIENTE (Clientes, Operadores y Admins — no Bodega) -->
             {% if user.is_superuser or user.perfil.es_cliente or user.perfil.es_operador or user.perfil.es_admin %}
             <div class="pt-4 pb-2">
                 <p class="px-4 text-xs font-black text-gray-500 uppercase tracking-widest">Portal Cliente</p>
             </div>
+            {% if user.perfil.es_cliente %}
             <a href="{% url 'inventario:maestro' %}" class="block px-4 py-2 rounded-lg hover:bg-white/10 transition font-medium text-sm">📦 Mi Inventario</a>
-            <a href="{% url 'solicitudes:lista' %}" class="block px-4 py-2 rounded-lg hover:bg-white/10 transition font-medium text-sm">📋 Mis Pedidos</a>
-            {% if not user.perfil.es_bodega %}
-            <a href="{% url 'solicitudes:nueva' %}" class="block px-4 py-2 rounded-lg bg-accent hover:opacity-90 transition font-bold shadow mt-2 text-white">✨ Nueva Solicitud</a>
             {% endif %}
+            <a href="{% url 'solicitudes:lista' %}" class="block px-4 py-2 rounded-lg hover:bg-white/10 transition font-medium text-sm">📋 Mis Pedidos</a>
+            <a href="{% url 'solicitudes:nueva' %}" class="block px-4 py-2 rounded-lg bg-accent hover:opacity-90 transition font-bold shadow mt-2 text-white">✨ Nueva Solicitud</a>
             {% endif %}
 
             <!-- Módulo OPERACIÓN (Bodega y Operador) -->
@@ -82,7 +82,9 @@
                 <p class="px-4 text-xs font-black text-gray-500 uppercase tracking-widest">Operación Logística</p>
             </div>
             <a href="{% url 'despacho:cola' %}" class="block px-4 py-2 rounded-lg hover:bg-white/10 transition font-medium text-sm">🚜 Picking y Despacho</a>
+            {% if not user.is_superuser and not user.perfil.es_admin %}
             <a href="{% url 'inventario:maestro' %}" class="block px-4 py-2 rounded-lg hover:bg-white/10 transition font-medium text-sm">📦 Maestro Inventario</a>
+            {% endif %}
             {% endif %}
 
             <!-- Módulo SUPERADMIN -->

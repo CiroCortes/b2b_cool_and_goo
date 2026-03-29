@@ -2,6 +2,10 @@
 
 {% block title %}Maestro de Inventario B2B{% endblock %}
 
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-6xl mx-auto">
     <div class="mb-8 flex justify-between items-center">
@@ -41,6 +45,173 @@
         </form>
     </div>
     {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         AGING BANDS — Panel de Vencimientos
+    ═══════════════════════════════════════════════════════════════ -->
+    {% if aging %}
+    <div class="mb-6 rounded-xl overflow-hidden shadow-lg border border-blue-200">
+
+        <!-- Header del panel -->
+        <div class="bg-gradient-to-r from-blue-700 to-blue-500 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">📊</span>
+                <div>
+                    <h2 class="text-white font-black text-lg tracking-tight">Aging de Vencimientos — Stock con Control FEFO</h2>
+                    <p class="text-blue-200 text-xs mt-0.5">{{ empresa_seleccionada.nombre_fantasia|default:empresa_seleccionada.nombre }} · {{ aging.total_stock }} unidades totales en {{ aging.verde.lotes|add:aging.amarillo.lotes|add:aging.naranja.lotes|add:aging.rojo.lotes }} lotes</p>
+                </div>
+            </div>
+            <span class="text-blue-200 text-xs font-bold uppercase tracking-widest hidden md:block">Actualizado al día de hoy</span>
+        </div>
+
+        <!-- ── Gráfico de Barras ─────────────────────────────────────── -->
+        <div class="bg-gradient-to-b from-blue-600 to-blue-500 px-6 pt-4 pb-6">
+
+            <!-- Toggle Unidades / Lotes -->
+            <div class="flex items-center justify-between mb-4">
+                <p class="text-blue-100 text-xs font-bold uppercase tracking-widest">Distribución por banda de vencimiento</p>
+                <div class="flex rounded-lg overflow-hidden border border-blue-300 shadow-inner">
+                    <button id="btn-unidades"
+                        onclick="cambiarVista('unidades')"
+                        class="px-4 py-1.5 text-xs font-black uppercase tracking-wide bg-white text-blue-700 transition">
+                        Unidades
+                    </button>
+                    <button id="btn-lotes"
+                        onclick="cambiarVista('lotes')"
+                        class="px-4 py-1.5 text-xs font-black uppercase tracking-wide bg-blue-400 text-white transition">
+                        N° Lotes
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas del gráfico -->
+            <div class="relative" style="height:200px;">
+                <canvas id="agingChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Tarjetas de bandas -->
+        <div class="bg-blue-50 px-6 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+            <!-- VERDE: +60 días -->
+            <div class="bg-white rounded-xl border-2 border-green-400 shadow-sm overflow-hidden flex flex-col">
+                <div class="bg-green-500 px-4 py-2 flex items-center gap-2">
+                    <span class="text-white text-lg">🟢</span>
+                    <span class="text-white font-black text-sm uppercase tracking-wide">Sin Riesgo</span>
+                </div>
+                <div class="px-4 py-4 flex-1 flex flex-col justify-between">
+                    <div>
+                        <p class="text-5xl font-black text-green-600 leading-none">{{ aging.verde.stock }}</p>
+                        <p class="text-xs text-gray-500 font-bold mt-1 uppercase">unidades</p>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <p class="text-sm font-black text-green-700">{{ aging.verde.label }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ aging.verde.lotes }} lote{{ aging.verde.lotes|pluralize }}</p>
+                    </div>
+                </div>
+                <!-- Barra de progreso -->
+                <div class="h-2 bg-gray-100">
+                    <div class="h-2 bg-green-400 transition-all" style="width: {{ aging.verde.pct }}%"></div>
+                </div>
+                <p class="text-center text-xs font-bold text-green-600 py-1 bg-green-50">{{ aging.verde.pct }}% del stock</p>
+            </div>
+
+            <!-- AMARILLO: 31-60 días -->
+            <div class="bg-white rounded-xl border-2 border-yellow-400 shadow-sm overflow-hidden flex flex-col">
+                <div class="bg-yellow-400 px-4 py-2 flex items-center gap-2">
+                    <span class="text-white text-lg">🟡</span>
+                    <span class="text-white font-black text-sm uppercase tracking-wide">Atención</span>
+                </div>
+                <div class="px-4 py-4 flex-1 flex flex-col justify-between">
+                    <div>
+                        <p class="text-5xl font-black text-yellow-500 leading-none">{{ aging.amarillo.stock }}</p>
+                        <p class="text-xs text-gray-500 font-bold mt-1 uppercase">unidades</p>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <p class="text-sm font-black text-yellow-600">{{ aging.amarillo.label }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ aging.amarillo.lotes }} lote{{ aging.amarillo.lotes|pluralize }}</p>
+                    </div>
+                </div>
+                <div class="h-2 bg-gray-100">
+                    <div class="h-2 bg-yellow-400 transition-all" style="width: {{ aging.amarillo.pct }}%"></div>
+                </div>
+                <p class="text-center text-xs font-bold text-yellow-600 py-1 bg-yellow-50">{{ aging.amarillo.pct }}% del stock</p>
+            </div>
+
+            <!-- NARANJA: 8-30 días -->
+            <div class="bg-white rounded-xl border-2 border-orange-400 shadow-sm overflow-hidden flex flex-col">
+                <div class="bg-orange-500 px-4 py-2 flex items-center gap-2">
+                    <span class="text-white text-lg">🟠</span>
+                    <span class="text-white font-black text-sm uppercase tracking-wide">Alto Riesgo</span>
+                </div>
+                <div class="px-4 py-4 flex-1 flex flex-col justify-between">
+                    <div>
+                        <p class="text-5xl font-black text-orange-500 leading-none">{{ aging.naranja.stock }}</p>
+                        <p class="text-xs text-gray-500 font-bold mt-1 uppercase">unidades</p>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <p class="text-sm font-black text-orange-600">{{ aging.naranja.label }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ aging.naranja.lotes }} lote{{ aging.naranja.lotes|pluralize }}</p>
+                    </div>
+                </div>
+                <div class="h-2 bg-gray-100">
+                    <div class="h-2 bg-orange-400 transition-all" style="width: {{ aging.naranja.pct }}%"></div>
+                </div>
+                <p class="text-center text-xs font-bold text-orange-600 py-1 bg-orange-50">{{ aging.naranja.pct }}% del stock</p>
+            </div>
+
+            <!-- ROJO: ≤7 días / vencido -->
+            <div class="bg-white rounded-xl border-2 border-red-500 shadow-sm overflow-hidden flex flex-col">
+                <div class="bg-red-600 px-4 py-2 flex items-center gap-2">
+                    <span class="text-white text-lg">🔴</span>
+                    <span class="text-white font-black text-sm uppercase tracking-wide">Crítico</span>
+                </div>
+                <div class="px-4 py-4 flex-1 flex flex-col justify-between">
+                    <div>
+                        <p class="text-5xl font-black text-red-600 leading-none">{{ aging.rojo.stock }}</p>
+                        <p class="text-xs text-gray-500 font-bold mt-1 uppercase">unidades</p>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <p class="text-sm font-black text-red-600">{{ aging.rojo.label }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ aging.rojo.lotes }} lote{{ aging.rojo.lotes|pluralize }}</p>
+                    </div>
+                </div>
+                <div class="h-2 bg-gray-100">
+                    <div class="h-2 bg-red-500 transition-all" style="width: {{ aging.rojo.pct }}%"></div>
+                </div>
+                <p class="text-center text-xs font-bold text-red-600 py-1 bg-red-50">{{ aging.rojo.pct }}% del stock</p>
+            </div>
+
+        </div>
+
+        <!-- Barra de composición total -->
+        <div class="bg-blue-50 px-6 pb-5">
+            <p class="text-xs font-black text-blue-800 uppercase tracking-widest mb-2">Composición del stock total</p>
+            <div class="flex h-4 rounded-full overflow-hidden w-full shadow-inner bg-gray-200">
+                {% if aging.verde.pct > 0 %}<div class="bg-green-500 h-full transition-all" style="width:{{ aging.verde.pct }}%" title="Sin riesgo: {{ aging.verde.pct }}%"></div>{% endif %}
+                {% if aging.amarillo.pct > 0 %}<div class="bg-yellow-400 h-full transition-all" style="width:{{ aging.amarillo.pct }}%" title="Atención: {{ aging.amarillo.pct }}%"></div>{% endif %}
+                {% if aging.naranja.pct > 0 %}<div class="bg-orange-500 h-full transition-all" style="width:{{ aging.naranja.pct }}%" title="Alto riesgo: {{ aging.naranja.pct }}%"></div>{% endif %}
+                {% if aging.rojo.pct > 0 %}<div class="bg-red-600 h-full transition-all" style="width:{{ aging.rojo.pct }}%" title="Crítico: {{ aging.rojo.pct }}%"></div>{% endif %}
+            </div>
+            <div class="flex gap-4 mt-2 flex-wrap">
+                <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>Sin riesgo ({{ aging.verde.pct }}%)</span>
+                <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>Atención ({{ aging.amarillo.pct }}%)</span>
+                <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block"></span>Alto riesgo ({{ aging.naranja.pct }}%)</span>
+                <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded-full bg-red-600 inline-block"></span>Crítico ({{ aging.rojo.pct }}%)</span>
+            </div>
+        </div>
+
+        {% if aging.rojo.stock > 0 %}
+        <div class="bg-red-50 border-t border-red-200 px-6 py-3 flex items-center gap-3">
+            <span class="text-red-500 text-xl">⚠️</span>
+            <p class="text-red-700 text-sm font-bold">
+                Hay <strong>{{ aging.rojo.stock }} unidades en {{ aging.rojo.lotes }} lote{{ aging.rojo.lotes|pluralize }}</strong> con vencimiento crítico (≤7 días o vencidos). Revisar con urgencia.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    <!-- FIN AGING BANDS ═══════════════════════════════════════════ -->
 
     <!-- Buscador Integrado -->
     <div class="bg-white p-4 {% if not empresas %}rounded-t-lg{% endif %} border border-gray-200 border-b-0 flex justify-between items-center">
@@ -125,31 +296,148 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('searchInput');
-        const tableBody = document.getElementById('inventoryTable');
-        
-        if (searchInput && tableBody) {
-            searchInput.addEventListener('keyup', function() {
-                const term = searchInput.value.toLowerCase();
-                const rows = tableBody.getElementsByTagName('tr');
-                
-                for (let i = 0; i < rows.length; i++) {
-                    // Ignora la fila de "Estado vacío" si existe
-                    if (rows[i].cells.length === 1) continue;
-                    
-                    // Columnas 0 (SKU) y 1 (Producto)
-                    const sku = rows[i].cells[0]?.textContent.toLowerCase() || "";
-                    const nombre = rows[i].cells[1]?.textContent.toLowerCase() || "";
-                    
-                    if (sku.includes(term) || nombre.includes(term)) {
-                        rows[i].style.display = '';
-                    } else {
-                        rows[i].style.display = 'none';
-                    }
-                }
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* ── Buscador de tabla ────────────────────────────────────────── */
+    const searchInput = document.getElementById('searchInput');
+    const tableBody   = document.getElementById('inventoryTable');
+    if (searchInput && tableBody) {
+        searchInput.addEventListener('keyup', function () {
+            const term = searchInput.value.toLowerCase();
+            const rows = tableBody.getElementsByTagName('tr');
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].cells.length === 1) continue;
+                const sku    = rows[i].cells[0]?.textContent.toLowerCase() || '';
+                const nombre = rows[i].cells[1]?.textContent.toLowerCase() || '';
+                rows[i].style.display = (sku.includes(term) || nombre.includes(term)) ? '' : 'none';
+            }
+        });
+    }
+
+    /* ── Aging Band Chart ─────────────────────────────────────────── */
+    {% if aging %}
+    const LABELS = ['+60 días', '31–60 días', '8–30 días', '≤7 días / Venc.'];
+    const COLORS = {
+        bg:     ['#22c55e', '#facc15', '#f97316', '#dc2626'],
+        hover:  ['#16a34a', '#eab308', '#ea580c', '#b91c1c'],
+        border: ['#15803d', '#ca8a04', '#c2410c', '#991b1b'],
+    };
+
+    const DATA = {
+        unidades: [{{ aging.verde.stock }}, {{ aging.amarillo.stock }}, {{ aging.naranja.stock }}, {{ aging.rojo.stock }}],
+        lotes:    [{{ aging.verde.lotes }}, {{ aging.amarillo.lotes }}, {{ aging.naranja.lotes }}, {{ aging.rojo.lotes }}],
+    };
+    const UNITS = { unidades: 'unidades', lotes: 'lotes' };
+
+    let vistaActual = 'unidades';
+    let agingChart  = null;
+
+    /* Plugin inline: muestra el valor encima de cada barra */
+    const valueLabelPlugin = {
+        id: 'valueLabelPlugin',
+        afterDatasetsDraw(chart) {
+            const { ctx, data } = chart;
+            chart.getDatasetMeta(0).data.forEach((bar, i) => {
+                const value = data.datasets[0].data[i];
+                if (value === 0) return;
+                ctx.save();
+                ctx.font = 'bold 13px system-ui, sans-serif';
+                ctx.fillStyle = '#1e3a5f';
+                ctx.shadowColor = 'rgba(255,255,255,0.6)';
+                ctx.shadowBlur = 3;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(value.toLocaleString('es-CL'), bar.x, bar.y - 6);
+                ctx.restore();
             });
         }
-    });
+    };
+
+    function buildChart(vista) {
+        const ctx = document.getElementById('agingChart');
+        if (!ctx) return;
+        if (agingChart) agingChart.destroy();
+
+        agingChart = new Chart(ctx, {
+            type: 'bar',
+            plugins: [valueLabelPlugin],
+            data: {
+                labels: LABELS,
+                datasets: [{
+                    label: vista === 'unidades' ? 'Stock (unidades)' : 'Número de lotes',
+                    data: DATA[vista],
+                    backgroundColor: COLORS.bg,
+                    hoverBackgroundColor: COLORS.hover,
+                    borderColor: COLORS.border,
+                    borderWidth: 2,
+                    borderRadius: 10,
+                    borderSkipped: false,
+                    minBarLength: 28,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15,23,42,0.9)',
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#f8fafc',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: ctx => ` ${ctx.parsed.y.toLocaleString('es-CL')} ${UNITS[vistaActual]}`
+                        }
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#e0f2fe',
+                            font: { weight: 'bold', size: 12 },
+                        },
+                        border: { display: false },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255,255,255,0.12)',
+                            drawBorder: false,
+                        },
+                        ticks: {
+                            color: '#bae6fd',
+                            font: { size: 11 },
+                            callback: v => v.toLocaleString('es-CL'),
+                        },
+                        border: { display: false },
+                    }
+                },
+                animation: {
+                    duration: 500,
+                    easing: 'easeInOutQuart',
+                }
+            }
+        });
+    }
+
+    window.cambiarVista = function (vista) {
+        vistaActual = vista;
+        buildChart(vista);
+        document.getElementById('btn-unidades').classList.toggle('bg-white',       vista === 'unidades');
+        document.getElementById('btn-unidades').classList.toggle('text-blue-700',  vista === 'unidades');
+        document.getElementById('btn-unidades').classList.toggle('bg-blue-400',    vista !== 'unidades');
+        document.getElementById('btn-unidades').classList.toggle('text-white',     vista !== 'unidades');
+        document.getElementById('btn-lotes').classList.toggle('bg-white',          vista === 'lotes');
+        document.getElementById('btn-lotes').classList.toggle('text-blue-700',     vista === 'lotes');
+        document.getElementById('btn-lotes').classList.toggle('bg-blue-400',       vista !== 'lotes');
+        document.getElementById('btn-lotes').classList.toggle('text-white',        vista !== 'lotes');
+    };
+
+    buildChart('unidades');
+    {% endif %}
+
+});
 </script>
 {% endblock %}
