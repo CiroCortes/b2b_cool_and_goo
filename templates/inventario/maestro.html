@@ -53,23 +53,23 @@
     <div class="mb-6 rounded-xl overflow-hidden shadow-lg border border-blue-200">
 
         <!-- Header del panel -->
-        <div class="bg-gradient-to-r from-blue-700 to-blue-500 px-6 py-4 flex items-center justify-between">
+        <div class="px-6 py-4 flex items-center justify-between" style="background: linear-gradient(to right, #2F4269, #415A8C);">
             <div class="flex items-center gap-3">
                 <span class="text-2xl">📊</span>
                 <div>
-                    <h2 class="text-white font-black text-lg tracking-tight">Aging de Vencimientos — Stock con Control FEFO</h2>
-                    <p class="text-blue-200 text-xs mt-0.5">{{ empresa_seleccionada.nombre_fantasia|default:empresa_seleccionada.nombre }} · {{ aging.total_stock }} unidades totales en {{ aging.verde.lotes|add:aging.amarillo.lotes|add:aging.naranja.lotes|add:aging.rojo.lotes }} lotes</p>
+                    <h2 class="font-black text-lg tracking-tight" style="color: #F1AC06;">Aging de Vencimientos — Stock con Control FEFO</h2>
+                    <p class="text-white text-xs mt-0.5 opacity-80">{{ empresa_seleccionada.nombre_fantasia|default:empresa_seleccionada.nombre }} · {{ aging.total_stock }} unidades totales en {{ aging.verde.lotes|add:aging.amarillo.lotes|add:aging.naranja.lotes|add:aging.rojo.lotes }} lotes</p>
                 </div>
             </div>
-            <span class="text-blue-200 text-xs font-bold uppercase tracking-widest hidden md:block">Actualizado al día de hoy</span>
+            <span class="text-xs font-bold uppercase tracking-widest hidden md:block opacity-60" style="color: #F1AC06;">Actualizado al día de hoy</span>
         </div>
 
         <!-- ── Gráfico de Barras ─────────────────────────────────────── -->
-        <div class="bg-gradient-to-b from-blue-600 to-blue-500 px-6 pt-4 pb-6">
+        <div class="px-6 pt-4 pb-6" style="background: linear-gradient(to bottom, #415A8C, #2F4269);">
 
             <!-- Toggle Unidades / Lotes -->
             <div class="flex items-center justify-between mb-4">
-                <p class="text-blue-100 text-xs font-bold uppercase tracking-widest">Distribución por banda de vencimiento</p>
+                <p class="text-xs font-bold uppercase tracking-widest" style="color: #F1AC06;">Distribución por banda de vencimiento</p>
                 <div class="flex rounded-lg overflow-hidden border border-blue-300 shadow-inner">
                     <button id="btn-unidades"
                         onclick="cambiarVista('unidades')"
@@ -186,7 +186,7 @@
 
         <!-- Barra de composición total -->
         <div class="bg-blue-50 px-6 pb-5">
-            <p class="text-xs font-black text-blue-800 uppercase tracking-widest mb-2">Composición del stock total</p>
+            <p class="text-xs font-black uppercase tracking-widest mb-2" style="color: #2F4269;">Composición del stock total</p>
             <div class="flex h-4 rounded-full overflow-hidden w-full shadow-inner bg-gray-200">
                 {% if aging.verde.pct > 0 %}<div class="bg-green-500 h-full transition-all" style="width:{{ aging.verde.pct }}%" title="Sin riesgo: {{ aging.verde.pct }}%"></div>{% endif %}
                 {% if aging.amarillo.pct > 0 %}<div class="bg-yellow-400 h-full transition-all" style="width:{{ aging.amarillo.pct }}%" title="Atención: {{ aging.amarillo.pct }}%"></div>{% endif %}
@@ -235,7 +235,7 @@
                     <th scope="col" class="px-6 py-3 font-semibold uppercase tracking-wider text-center">Unidad</th>
                     <th scope="col" class="px-6 py-3 font-semibold uppercase tracking-wider text-center">Control</th>
                     <th scope="col" class="px-6 py-3 font-semibold uppercase tracking-wider text-right text-lg">Stock Consolidado (Total)</th>
-                    {% if user.is_superuser or user.perfil.es_operador or user.perfil.es_admin %}
+                    {% if user.is_superuser or user.perfil.es_operador or user.perfil.es_admin or user.perfil.es_cliente %}
                     <th scope="col" class="px-6 py-3 font-semibold uppercase tracking-wider text-right">Acción</th>
                     {% endif %}
                 </tr>
@@ -266,7 +266,7 @@
                             <span class="text-2xl font-black text-red-500">0</span>
                         {% endif %}
                     </td>
-                    {% if user.is_superuser or user.perfil.es_operador or user.perfil.es_admin %}
+                    {% if user.is_superuser or user.perfil.es_operador or user.perfil.es_admin or user.perfil.es_cliente %}
                     <td class="px-6 py-4 text-right whitespace-nowrap">
                         <a href="{% url 'inventario:detalle_fefo' prod.pk %}" class="text-primary hover:text-accent transition font-bold text-sm border border-primary hover:border-accent px-3 py-2 rounded inline-block">
                             Ver Lotes &rarr;
@@ -342,9 +342,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (value === 0) return;
                 ctx.save();
                 ctx.font = 'bold 13px system-ui, sans-serif';
-                ctx.fillStyle = '#1e3a5f';
-                ctx.shadowColor = 'rgba(255,255,255,0.6)';
-                ctx.shadowBlur = 3;
+                ctx.fillStyle = '#F1AC06';
+                ctx.shadowColor = 'rgba(0,0,0,0.7)';
+                ctx.shadowBlur = 4;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'bottom';
                 ctx.fillText(value.toLocaleString('es-CL'), bar.x, bar.y - 6);

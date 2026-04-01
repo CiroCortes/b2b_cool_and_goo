@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from usuarios.decorators import operador_required, bodega_required
 from django.db import models
 from django.db.models import Sum, Count, Q
@@ -93,16 +94,26 @@ def maestro_inventario(request):
     })
 
 
-@bodega_required
+@login_required
 def detalle_fefo(request, pk):
     """
     Vista Detalle FEFO: Desglosa un SKU específico mostrando
     dónde se encuentra su inventario físico, categorizado
     por Lote, Vencimiento y Ubicación.
+    Acceso: clientes (solo sus propios productos), bodega, operador y admin.
     """
     producto = get_object_or_404(Producto, pk=pk)
-    
-    # Obtenemos los lotes vivos ordenados por defecto FEFO (del modelo)
+    perfil = getattr(request.user, 'perfil', None)
+
+    # Clientes solo pueden ver lotes de sus propios productos
+    if perfil and perfil.es_cliente:
+        if producto.empresa != perfil.empresa:
+            raise PermissionDenied
+    elif not (request.user.is_superuser or (
+        perfil and (perfil.es_bodega or perfil.es_operador or perfil.es_admin)
+    )):
+        raise PermissionDenied
+
     lotes_vivos = producto.lotes.filter(
         estado__in=[Lote.Estado.DISPONIBLE, Lote.Estado.VENCIDO]
     ).select_related('ubicacion__zona__bodega')
