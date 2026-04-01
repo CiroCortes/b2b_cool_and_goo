@@ -20,15 +20,37 @@
             --brand-yellow: #F1AC06;
             --brand-dark: #2F4269;
         }
-        .bg-primary { background-color: var(--brand-blue) !important; color: white !important; }
-        .text-primary { color: var(--brand-blue) !important; }
-        .border-primary { border-color: var(--brand-blue) !important; }
-        
-        .bg-accent { background-color: var(--brand-yellow) !important; color: white !important; }
-        .text-accent { color: var(--brand-yellow) !important; }
-        
+
+        /* ── Colores base ──────────────────────────────────────────── */
+        .bg-primary       { background-color: var(--brand-blue) !important; color: white !important; }
+        .text-primary     { color: var(--brand-blue) !important; }
+        .border-primary   { border-color: var(--brand-blue) !important; }
+
+        .bg-accent        { background-color: var(--brand-yellow) !important; color: white !important; }
+        .text-accent      { color: var(--brand-yellow) !important; }
+
         .bg-background-dark { background-color: var(--brand-dark) !important; }
-        .text-secondary { color: var(--brand-blue) !important; }
+        .text-secondary   { color: var(--brand-blue) !important; }
+
+        /* ── Componentes brand reutilizables (DRY) ─────────────────── */
+
+        /* Panel / card con gradiente corporativo oscuro */
+        .bg-brand-gradient {
+            background: linear-gradient(135deg, var(--brand-blue), var(--brand-dark)) !important;
+            color: white !important;
+        }
+
+        /* Encabezado de sección sobre fondo oscuro */
+        .bg-brand-section {
+            background-color: var(--brand-dark) !important;
+            color: white !important;
+        }
+
+        /* Texto amarillo brand — para títulos sobre fondo oscuro */
+        .text-brand-yellow { color: var(--brand-yellow) !important; }
+
+        /* Texto suave sobre fondo oscuro (subtítulos, meta) */
+        .text-brand-muted  { color: rgba(255,255,255,0.72) !important; }
     </style>
 </head>
 

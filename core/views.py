@@ -20,22 +20,13 @@ def dashboard_principal(request):
         # ---------------------------------------------------------
         # DASHBOARD CLIENTE B2B
         # ---------------------------------------------------------
-        mis_solicitudes = Solicitud.objects.filter(cliente=request.user)
-        
-        context['total_pedidos'] = mis_solicitudes.count()
-        context['pedidos_pendientes'] = mis_solicitudes.filter(estado=Solicitud.Estado.PENDIENTE_BACKLOG).count()
-        context['pedidos_despachados'] = mis_solicitudes.filter(estado=Solicitud.Estado.DESPACHADA).count()
-        context['ultimas_solicitudes'] = mis_solicitudes.order_by('-fecha_solicitud')[:5]
-        context['template_name'] = 'core/dashboard_cliente.html'
         mis_solicitudes = Solicitud.objects.para_usuario(request.user)
-        # Estadísticas Cliente
-        total_aprobadas = mis_solicitudes.filter(estado=Solicitud.Estado.AUTORIZADA).count()
-        en_transito = mis_solicitudes.filter(estado__in=[Solicitud.Estado.EN_PICKING, Solicitud.Estado.DESPACHADA]).count()
 
         return render(request, 'core/dashboard_cliente.html', {
-            'solicitudes': mis_solicitudes.order_by('-fecha_solicitud')[:5],
-            'total_aprobadas': total_aprobadas,
-            'en_transito': en_transito,
+            'total_pedidos':       mis_solicitudes.count(),
+            'pedidos_pendientes':  mis_solicitudes.filter(estado=Solicitud.Estado.PENDIENTE_BACKLOG).count(),
+            'pedidos_despachados': mis_solicitudes.filter(estado=Solicitud.Estado.DESPACHADA).count(),
+            'ultimas_solicitudes': mis_solicitudes.order_by('-fecha_solicitud')[:5],
         })
     elif perfil and perfil.es_bodega:
         # ---------------------------------------------------------
