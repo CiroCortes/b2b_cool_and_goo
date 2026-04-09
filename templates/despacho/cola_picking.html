@@ -54,11 +54,11 @@
                     </td>
                     <td class="px-6 py-4 text-right">
                         {% if sol.estado == 'EN_PICKING' %}
-                            <a href="{% url 'despacho:ejecutar' sol.pk %}" class="bg-yellow-500 text-white px-4 py-2 rounded shadow hover:bg-yellow-600 transition font-bold text-sm">
+                            <a href="{% url 'despacho:ejecutar' sol.pk %}" class="bg-accent px-4 py-2 rounded shadow hover:opacity-90 transition font-bold text-sm">
                                 Continuar &rarr;
                             </a>
                         {% else %}
-                            <a href="{% url 'despacho:ejecutar' sol.pk %}" class="bg-primary text-white px-4 py-2 rounded shadow hover:bg-opacity-90 transition font-bold text-sm">
+                            <a href="{% url 'despacho:ejecutar' sol.pk %}" class="bg-primary px-4 py-2 rounded shadow hover:opacity-90 transition font-bold text-sm">
                                 Empezar &rarr;
                             </a>
                         {% endif %}

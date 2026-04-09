@@ -5,12 +5,14 @@ from usuarios.decorators import operador_required, bodega_required
 from django.contrib import messages
 from django.utils import timezone
 from django.db import models
+from django.http import JsonResponse
 
 from .models import Solicitud, ItemSolicitud
 from .forms import SolicitudForm, ItemSolicitudForm
 from .ia_service import procesar_pedido_con_gemini
 from .services import asignar_lotes_a_solicitud
 from usuarios.models import Empresa
+from inventario.models import Lote
 
 
 @login_required
@@ -102,9 +104,81 @@ def agregar_item(request, pk):
             form = ItemSolicitudForm(request.POST, solicitud=solicitud)
             if form.is_valid():
                 item = form.save(commit=False)
-                solicitud.agregar_o_sumar_item(item.producto, item.cantidad_solicitada)
-                messages.success(request, f'Producto {item.producto.codigo} agregado correctamente.')
+                lote_id = request.POST.get('lote_asignado_id')
+                lote_elegido = None
+
+                # ── Resolución y validación del lote elegido ──────────────
+                if lote_id:
+                    try:
+                        lote_elegido = Lote.objects.get(
+                            pk=lote_id,
+                            producto=item.producto,
+                            estado=Lote.Estado.DISPONIBLE
+                        )
+                    except Lote.DoesNotExist:
+                        messages.error(request, '❌ El lote seleccionado ya no está disponible.')
+                        return redirect('solicitudes:agregar_item', pk=pk)
+
+                    # Cuánto de este lote ya está comprometido en ESTA solicitud
+                    ya_comprometido = solicitud.items.filter(
+                        lote_asignado=lote_elegido
+                    ).aggregate(
+                        total=models.Sum('cantidad_solicitada')
+                    )['total'] or 0
+
+                    maximo_adicional = lote_elegido.cantidad_disponible - ya_comprometido
+
+                    if item.cantidad_solicitada > maximo_adicional:
+                        messages.error(
+                            request,
+                            f'❌ Stock insuficiente en el lote {lote_elegido.numero_lote}. '
+                            f'Disponibles en bodega: {lote_elegido.cantidad_disponible} uds | '
+                            f'Ya comprometidos en esta O.C.: {ya_comprometido} uds | '
+                            f'Puedes agregar máx. {maximo_adicional} uds más.'
+                        )
+                        return redirect('solicitudes:agregar_item', pk=pk)
+
+                # ── Guardar el ítem ────────────────────────────────────────
+                if lote_elegido:
+                    # Con lote específico: acumular en la línea existente producto+lote,
+                    # o crear nueva línea. NUNCA mezclar con líneas sin lote.
+                    item_existente = solicitud.items.filter(
+                        producto=item.producto,
+                        lote_asignado=lote_elegido
+                    ).first()
+
+                    if item_existente:
+                        item_existente.cantidad_solicitada += item.cantidad_solicitada
+                        item_existente.save(update_fields=['cantidad_solicitada'])
+                        messages.success(
+                            request,
+                            f'✅ Cantidad actualizada — Lote {lote_elegido.numero_lote}: '
+                            f'ahora {item_existente.cantidad_solicitada} uds.'
+                        )
+                    else:
+                        ItemSolicitud.objects.create(
+                            solicitud=solicitud,
+                            producto=item.producto,
+                            cantidad_solicitada=item.cantidad_solicitada,
+                            lote_asignado=lote_elegido
+                        )
+                        messages.success(
+                            request,
+                            f'✅ {item.producto.codigo} — {item.cantidad_solicitada} uds '
+                            f'del lote {lote_elegido.numero_lote} pre-seleccionado.'
+                        )
+                else:
+                    # Sin lote: acumulación normal, FEFO al autorizar
+                    solicitud.agregar_o_sumar_item(item.producto, item.cantidad_solicitada)
+                    messages.success(
+                        request,
+                        f'✅ {item.producto.codigo} agregado. '
+                        f'El lote se asignará automáticamente al autorizar (FEFO).'
+                    )
+
                 return redirect('solicitudes:agregar_item', pk=pk)
+
+
         
         # --- VIA 2: IA TEXTO LIBRE ---
         elif 'btn_ia_texto' in request.POST:
@@ -219,6 +293,49 @@ def detalle_solicitud(request, pk):
         'items': items,
         'titulo': f'Solicitud #{solicitud.pk}',
     })
+
+
+@login_required
+def lotes_por_producto(request, producto_id):
+    """
+    Endpoint AJAX: devuelve los lotes disponibles de un producto.
+    Usado en el formulario de agregar ítems para la selección manual de lotes.
+    Filtra por empresa de la solicitud si viene el parámetro solicitud_id.
+    """
+    solicitud_id = request.GET.get('solicitud_id')
+    empresa = None
+
+    if solicitud_id:
+        try:
+            solicitud = Solicitud.objects.get(pk=solicitud_id)
+            empresa = solicitud.empresa
+        except Solicitud.DoesNotExist:
+            pass
+
+    lotes_qs = Lote.objects.filter(
+        producto_id=producto_id,
+        estado=Lote.Estado.DISPONIBLE,
+        cantidad_disponible__gt=0,
+    ).select_related('ubicacion__zona__bodega').order_by('fecha_vencimiento', 'fecha_fabricacion')
+
+    # Asegurar que los lotes pertenecen a la empresa correcta (por producto)
+    if empresa:
+        lotes_qs = lotes_qs.filter(producto__empresa=empresa)
+
+    lotes_data = []
+    for lote in lotes_qs:
+        ubicacion_str = str(lote.ubicacion) if lote.ubicacion else 'Sin ubicación'
+        vencimiento_str = lote.fecha_vencimiento.strftime('%d/%m/%Y') if lote.fecha_vencimiento else 'Sin vencimiento'
+        lotes_data.append({
+            'id': lote.pk,
+            'numero_lote': lote.numero_lote,
+            'cantidad_disponible': lote.cantidad_disponible,
+            'fecha_vencimiento': vencimiento_str,
+            'ubicacion': ubicacion_str,
+        })
+
+    return JsonResponse({'lotes': lotes_data})
+
 
 
 

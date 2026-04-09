@@ -36,9 +36,9 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-    <!-- COlUMNA IZQUIERDA: Métodos de Carga (8 columnas) -->
+    <!-- COLUMNA IZQUIERDA: Métodos de Carga (8 columnas) -->
     <div class="lg:col-span-8 flex flex-col gap-6">
-        
+
         <!-- CARD 1: Carga Asistida por IA (Gemini) -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="bg-brand-section px-6 py-4 flex items-center gap-3">
@@ -46,7 +46,7 @@
                 <h2 class="text-xl font-bold text-brand-yellow tracking-wide">Asistente Inteligente Gemini</h2>
                 <span class="ml-auto text-brand-muted text-xs font-semibold uppercase tracking-widest border border-white/30 px-2 py-1 rounded">Beta</span>
             </div>
-            
+
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Via 2: Texto Libre -->
                 <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition">
@@ -77,7 +77,7 @@
                         <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center mb-3 bg-gray-50 hover:bg-gray-100 transition cursor-pointer relative">
                             <input type="file" name="archivo_pedido" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx">
                             <span class="text-2xl block mb-1">📁</span>
-                            <span class="text-xs font-semibold text-indigo-600">Click o Arrastra tu archivo</span>
+                            <span class="text-xs font-semibold text-indigo-600" id="file-label">Click o Arrastra tu archivo</span>
                             <p class="text-[10px] text-gray-400 mt-1">Soporta PDF, JPG, PNG, Excel</p>
                         </div>
                         <button type="submit" name="btn_ia_archivo" value="1"
@@ -89,25 +89,92 @@
             </div>
         </div>
 
-        <!-- CARD 2: Carga Manual Clásica -->
+        <!-- CARD 2: Carga Manual con Selección de Lote -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-bold text-secondary mb-4 flex items-center gap-2">
-                <span>🖱️</span> Carga Manual uno por uno
+            <h2 class="text-lg font-bold text-secondary mb-1 flex items-center gap-2">
+                <span>🖱️</span> Carga Manual con Selección de Lote
             </h2>
-            <form method="post" class="flex flex-col md:flex-row gap-4 items-end">
+            <p class="text-xs text-gray-500 mb-4">
+                Selecciona el producto, la cantidad y <strong>opcionalmente</strong> elige un lote específico.
+                Si no eliges lote, el sistema lo asignará automáticamente al autorizar con la regla FEFO/FIFO.
+            </p>
+
+            <form method="post" id="form-manual" class="flex flex-col gap-4">
                 {% csrf_token %}
-                <div class="flex-grow">
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Producto / SKU</label>
-                    {{ form.producto }}
+                <!-- Hidden: lote elegido -->
+                <input type="hidden" name="lote_asignado_id" id="lote_asignado_id" value="">
+
+                <!-- Fila 1: Producto + Cantidad -->
+                <div class="flex flex-col md:flex-row gap-4 items-end">
+                    <div class="flex-grow">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Producto / SKU</label>
+                        {{ form.producto }}
+                    </div>
+                    <div class="w-40">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                            Cantidad
+                            <span id="qty-lote-hint" class="hidden font-normal text-green-600 normal-case ml-1"></span>
+                        </label>
+                        {{ form.cantidad_solicitada }}
+                    </div>
+                    <button type="submit" name="btn_manual" value="1"
+                            class="bg-secondary text-white px-6 py-2.5 rounded-lg font-bold hover:bg-opacity-90 transition shadow">
+                        + Agregar
+                    </button>
                 </div>
-                <div class="w-32">
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Cantidad</label>
-                    {{ form.cantidad_solicitada }}
+
+                <!-- Fila 2: Selector de Lote (aparece al elegir producto) -->
+                <div id="lote-section" class="hidden">
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-blue-800 flex items-center gap-2">
+                                📦 Selección de Lote <span class="font-normal text-blue-600">(Opcional)</span>
+                            </h3>
+                            <button type="button" id="btn-auto-lote"
+                                    class="text-xs text-blue-600 hover:text-blue-800 underline font-medium">
+                                Usar asignación automática
+                            </button>
+                        </div>
+
+                        <!-- Estado: cargando -->
+                        <div id="lote-loading" class="hidden text-center py-3">
+                            <div class="inline-block w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span class="ml-2 text-xs text-blue-600">Consultando lotes disponibles...</span>
+                        </div>
+
+                        <!-- Estado: sin lotes -->
+                        <div id="lote-empty" class="hidden text-center py-3">
+                            <span class="text-xs text-gray-500">⚠️ No hay lotes disponibles para este producto. El sistema asignará automáticamente.</span>
+                        </div>
+
+                        <!-- Tabla de lotes disponibles -->
+                        <div id="lote-table-container" class="hidden">
+                            <p class="text-xs text-gray-500 mb-2">Haz clic en un lote para seleccionarlo. El sistema recomendará el más próximo a vencer (FEFO).</p>
+                            <div class="overflow-x-auto rounded-lg border border-blue-200">
+                                <table class="min-w-full text-xs">
+                                    <thead class="bg-blue-100 text-blue-700 uppercase tracking-wider">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left">Lote</th>
+                                            <th class="px-3 py-2 text-left">Stock Disp.</th>
+                                            <th class="px-3 py-2 text-left">Vencimiento</th>
+                                            <th class="px-3 py-2 text-left">Ubicación</th>
+                                            <th class="px-3 py-2 text-center">Seleccionar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lote-tbody" class="divide-y divide-blue-100 bg-white">
+                                        <!-- filas inyectadas por JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Badge del lote seleccionado -->
+                            <div id="lote-seleccionado-badge" class="hidden mt-3 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                                <span class="text-green-600 font-bold text-sm">✅ Lote seleccionado:</span>
+                                <span id="lote-seleccionado-texto" class="text-green-800 font-mono font-bold text-sm"></span>
+                                <button type="button" id="btn-deselect-lote" class="ml-auto text-gray-400 hover:text-red-500 text-xs">✕ Quitar</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <button type="submit" name="btn_manual" value="1"
-                        class="bg-secondary text-white px-6 py-2.5 rounded-lg font-bold hover:bg-opacity-90 transition shadow">
-                    + Agregar
-                </button>
             </form>
         </div>
 
@@ -129,14 +196,30 @@
                 {% if items %}
                 <ul class="space-y-3">
                     {% for item in items %}
-                    <li class="p-3 bg-gray-50 rounded-lg border border-gray-100 flex justify-between items-center hover:bg-gray-100 transition">
-                        <div class="overflow-hidden pr-2">
-                            <span class="font-mono text-sm font-bold text-primary block">{{ item.producto.codigo }}</span>
-                            <span class="text-xs text-secondary truncate block" title="{{ item.producto.nombre }}">{{ item.producto.nombre }}</span>
+                    <li class="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition">
+                        <div class="flex justify-between items-start">
+                            <div class="overflow-hidden pr-2">
+                                <span class="font-mono text-sm font-bold text-primary block">{{ item.producto.codigo }}</span>
+                                <span class="text-xs text-secondary truncate block" title="{{ item.producto.nombre }}">{{ item.producto.nombre }}</span>
+                            </div>
+                            <div class="flex-shrink-0 bg-white border border-gray-200 text-secondary text-sm font-black px-3 py-1 rounded shadow-sm">
+                                x{{ item.cantidad_solicitada }}
+                            </div>
                         </div>
-                        <div class="flex-shrink-0 bg-white border border-gray-200 text-secondary text-sm font-black px-3 py-1 rounded shadow-sm">
-                            x{{ item.cantidad_solicitada }}
+                        <!-- Badge lote pre-seleccionado -->
+                        {% if item.lote_asignado %}
+                        <div class="mt-2 flex items-center gap-1 bg-green-50 border border-green-200 rounded px-2 py-1">
+                            <span class="text-green-600 text-[10px] font-bold">📦 LOTE:</span>
+                            <span class="text-green-800 font-mono text-[10px] font-bold">{{ item.lote_asignado.numero_lote }}</span>
+                            {% if item.lote_asignado.fecha_vencimiento %}
+                            <span class="text-gray-400 text-[9px] ml-1">Vence: {{ item.lote_asignado.fecha_vencimiento|date:"d/m/Y" }}</span>
+                            {% endif %}
                         </div>
+                        {% else %}
+                        <div class="mt-2 flex items-center gap-1">
+                            <span class="text-gray-400 text-[10px]">🤖 Lote: asignación automática FEFO</span>
+                        </div>
+                        {% endif %}
                     </li>
                     {% endfor %}
                 </ul>
@@ -148,7 +231,7 @@
                 </div>
                 {% endif %}
             </div>
-            
+
             <div class="mt-4 pt-4 border-t text-xs text-gray-500 text-center">
                 Ref: {{ solicitud.referencia_cliente|default:"Sin referencia" }} | Fecha: {{ solicitud.fecha_requerida|date:"d M, Y" }}
             </div>
@@ -157,24 +240,162 @@
 
 </div>
 
+{% endblock %}
+
 {% block scripts %}
 <script>
-    // Pequeño script para feedback visual al seleccionar un archivo en el input file
-    const fileInput = document.querySelector('input[type="file"]');
-    if(fileInput) {
-        fileInput.addEventListener('change', function(e) {
+    // ─── URLs para el AJAX ──────────────────────────────────────────────────
+    const LOTES_API_BASE = "{% url 'solicitudes:lotes_por_producto' 0 %}".replace('/0/', '/');
+    const SOLICITUD_ID   = "{{ solicitud.pk }}";
+
+    // ─── Referencias DOM ────────────────────────────────────────────────────
+    const selectProducto      = document.getElementById('id_producto');
+    const loteSection         = document.getElementById('lote-section');
+    const loteLoading         = document.getElementById('lote-loading');
+    const loteEmpty           = document.getElementById('lote-empty');
+    const loteTableContainer  = document.getElementById('lote-table-container');
+    const loteTbody           = document.getElementById('lote-tbody');
+    const loteAsignadoId      = document.getElementById('lote_asignado_id');
+    const loteBadge           = document.getElementById('lote-seleccionado-badge');
+    const loteTexto           = document.getElementById('lote-seleccionado-texto');
+    const btnAutoLote         = document.getElementById('btn-auto-lote');
+    const btnDeselectLote     = document.getElementById('btn-deselect-lote');
+    const fileInput           = document.querySelector('input[type="file"]');
+    const fileLabel           = document.getElementById('file-label');
+    const cantidadInput       = document.getElementById('id_cantidad_solicitada');
+    const qtyHint             = document.getElementById('qty-lote-hint');
+
+    // ─── Helpers UI ─────────────────────────────────────────────────────────
+    function showOnly(el) {
+        [loteLoading, loteEmpty, loteTableContainer].forEach(e => e.classList.add('hidden'));
+        el.classList.remove('hidden');
+    }
+
+    function resetLoteSelection() {
+        loteAsignadoId.value = '';
+        loteBadge.classList.add('hidden');
+        // Restaurar input cantidad a sin límite
+        if (cantidadInput) {
+            cantidadInput.removeAttribute('max');
+            cantidadInput.placeholder = '';
+        }
+        if (qtyHint) {
+            qtyHint.textContent = '';
+            qtyHint.classList.add('hidden');
+        }
+        // Remover selección visual de filas
+        document.querySelectorAll('#lote-tbody tr').forEach(r => {
+            r.classList.remove('bg-green-50', 'ring-2', 'ring-green-400');
+        });
+    }
+
+    // ─── Selección de producto → cargar lotes vía AJAX ──────────────────────
+    selectProducto.addEventListener('change', function () {
+        const productoId = this.value;
+        resetLoteSelection();
+
+        if (!productoId) {
+            loteSection.classList.add('hidden');
+            return;
+        }
+
+        loteSection.classList.remove('hidden');
+        showOnly(loteLoading);
+        loteTbody.innerHTML = '';
+
+        fetch(`${LOTES_API_BASE}${productoId}/?solicitud_id=${SOLICITUD_ID}`)
+            .then(resp => resp.json())
+            .then(data => {
+                if (!data.lotes || data.lotes.length === 0) {
+                    showOnly(loteEmpty);
+                    return;
+                }
+
+                showOnly(loteTableContainer);
+
+                data.lotes.forEach((lote, index) => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'cursor-pointer hover:bg-blue-50 transition';
+                    tr.dataset.loteId = lote.id;
+                    tr.dataset.loteNum = lote.numero_lote;
+                    tr.dataset.loteDisponible = lote.cantidad_disponible;
+
+                    // Etiqueta FEFO para el primero (más próximo a vencer)
+                    const fefoTag = index === 0
+                        ? `<span class="ml-1 bg-orange-100 text-orange-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase">FEFO ★</span>`
+                        : '';
+
+                    tr.innerHTML = `
+                        <td class="px-3 py-2 font-mono font-bold text-secondary">${lote.numero_lote}${fefoTag}</td>
+                        <td class="px-3 py-2 font-bold text-green-700">${lote.cantidad_disponible} uds</td>
+                        <td class="px-3 py-2 text-gray-600">${lote.fecha_vencimiento}</td>
+                        <td class="px-3 py-2 text-gray-500 text-[11px]">${lote.ubicacion}</td>
+                        <td class="px-3 py-2 text-center">
+                            <button type="button" class="btn-select-lote bg-blue-100 hover:bg-blue-600 hover:text-white text-blue-700 font-bold text-xs px-3 py-1 rounded-lg transition">
+                                Elegir
+                            </button>
+                        </td>
+                    `;
+                    loteTbody.appendChild(tr);
+                });
+
+                // ── Click en fila / botón Elegir ────────────────────────────
+                document.querySelectorAll('#lote-tbody tr').forEach(row => {
+                    row.addEventListener('click', function () {
+                        // Quitar selección previa
+                        document.querySelectorAll('#lote-tbody tr').forEach(r => {
+                            r.classList.remove('bg-green-50', 'ring-2', 'ring-green-400');
+                        });
+                        // Marcar esta fila
+                        this.classList.add('bg-green-50', 'ring-2', 'ring-green-400');
+                        // Asignar valor al hidden input
+                        loteAsignadoId.value = this.dataset.loteId;
+                        const disponible = parseInt(this.dataset.loteDisponible, 10);
+
+                        // ── Actualizar input de cantidad con el max del lote ──
+                        if (cantidadInput) {
+                            cantidadInput.setAttribute('max', disponible);
+                            // Si el valor actual excede el disponible del lote, corregirlo
+                            if (parseInt(cantidadInput.value, 10) > disponible) {
+                                cantidadInput.value = disponible;
+                            }
+                            cantidadInput.focus();
+                        }
+                        // Mostrar hint de máximo disponible en el label
+                        if (qtyHint) {
+                            qtyHint.textContent = `(máx ${disponible} uds en lote)`;
+                            qtyHint.classList.remove('hidden');
+                        }
+                        // Mostrar badge
+                        loteTexto.textContent = this.dataset.loteNum;
+                        loteBadge.classList.remove('hidden');
+                    });
+                });
+            })
+            .catch(() => {
+                showOnly(loteEmpty);
+            });
+    });
+
+    // ─── Botón "Usar asignación automática" ─────────────────────────────────
+    btnAutoLote.addEventListener('click', resetLoteSelection);
+
+    // ─── Botón ✕ Quitar lote ────────────────────────────────────────────────
+    btnDeselectLote.addEventListener('click', resetLoteSelection);
+
+    // ─── Feedback visual al seleccionar archivo ──────────────────────────────
+    if (fileInput && fileLabel) {
+        fileInput.addEventListener('change', function (e) {
             const fileName = e.target.files[0]?.name;
             const container = this.parentElement;
-            if(fileName) {
+            if (fileName) {
                 container.classList.add('border-indigo-500', 'bg-indigo-50');
-                container.querySelector('.text-indigo-600').textContent = fileName;
+                fileLabel.textContent = fileName;
             } else {
                 container.classList.remove('border-indigo-500', 'bg-indigo-50');
-                container.querySelector('.text-indigo-600').textContent = 'Click o Arrastra tu archivo';
+                fileLabel.textContent = 'Click o Arrastra tu archivo';
             }
         });
     }
 </script>
-{% endblock %}
-
 {% endblock %}
